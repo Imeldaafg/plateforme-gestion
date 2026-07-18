@@ -7,24 +7,131 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-white">
-    <div class="min-h-screen flex items-center justify-center p-4">
-        <div class="w-full max-w-md space-y-12">
-            <div class="text-center space-y-2">
-                <h1 class="text-3xl font-light tracking-tight text-black">Plateforme de gestion</h1>
-                <p class="text-sm font-light text-gray-500">ICC Lyon Sud</p>
-            </div>
-            <div class="space-y-6">
-                <div class="space-y-4">
-                    <input type="email" placeholder="Email" value="admin@icc.com" class="w-full px-4 py-3 border border-gray-200 bg-white text-black placeholder-gray-400 text-sm focus:outline-none focus:border-red-500" />
-                    <input type="password" placeholder="Mot de passe" value="admin123" class="w-full px-4 py-3 border border-gray-200 bg-white text-black placeholder-gray-400 text-sm focus:outline-none focus:border-red-500" />
+    <div id="app"></div>
+    <script>
+        let currentUser = null;
+        const departments = [
+            {id: 'accueil', name: 'Accueil', icon: '🚪'},
+            {id: 'louange', name: 'Louange', icon: '🎵'},
+            {id: 'enfants', name: 'Enfants', icon: '👶'},
+            {id: 'jeunesse', name: 'Jeunesse', icon: '👦'},
+            {id: 'intercession', name: 'Intercession', icon: '🙏'},
+            {id: 'streaming', name: 'Streaming', icon: '🎥'},
+            {id: 'nettoyage', name: 'Nettoyage', icon: '🧹'},
+            {id: 'logistique', name: 'Logistique', icon: '📦'}
+        ];
+        
+        const stars = [
+            {id: 1, name: 'Elvis Jean', email: 'elvis@icc.com', phone: '0612345678', departments: ['accueil', 'louange']},
+            {id: 2, name: 'Béni Koffi', email: 'beni@icc.com', phone: '0623456789', departments: ['enfants', 'jeunesse']},
+            {id: 3, name: 'Déborah Sall', email: 'deborah@icc.com', phone: '0634567890', departments: ['accueil', 'intercession']},
+            {id: 4, name: 'Jemima Diallo', email: 'jemima@icc.com', phone: '0645678901', departments: ['accueil']},
+            {id: 5, name: 'Ange Nkwenchia', email: 'ange@icc.com', phone: '0656789012', departments: ['louange', 'streaming']}
+        ];
+
+        function renderLogin() {
+            document.getElementById('app').innerHTML = `
+                <div class="min-h-screen bg-white flex items-center justify-center p-4">
+                    <div class="w-full max-w-md space-y-12">
+                        <div class="text-center space-y-2">
+                            <h1 class="text-3xl font-light tracking-tight text-black">Plateforme de gestion</h1>
+                            <p class="text-sm font-light text-gray-500">ICC Lyon Sud</p>
+                        </div>
+                        <div class="space-y-6">
+                            <div class="space-y-4">
+                                <input id="email" type="email" placeholder="Email" value="admin@icc.com" class="w-full px-4 py-3 border border-gray-200 bg-white text-black placeholder-gray-400 text-sm focus:outline-none focus:border-red-500" />
+                                <input id="password" type="password" placeholder="Mot de passe" value="admin123" class="w-full px-4 py-3 border border-gray-200 bg-white text-black placeholder-gray-400 text-sm focus:outline-none focus:border-red-500" />
+                            </div>
+                            <button onclick="handleLogin()" class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">Connexion</button>
+                        </div>
+                        <div class="text-center space-y-2 pt-8 border-t border-gray-200">
+                            <p class="text-xs font-light text-gray-500">Identifiants de test</p>
+                            <p class="text-xs text-gray-600">admin@icc.com / admin123</p>
+                        </div>
+                    </div>
                 </div>
-                <button class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">Connexion</button>
-            </div>
-            <div class="text-center space-y-2 pt-8 border-t border-gray-200">
-                <p class="text-xs font-light text-gray-500">Identifiants de test</p>
-                <p class="text-xs text-gray-600">admin@icc.com / admin123</p>
-            </div>
-        </div>
-    </div>
+            `;
+        }
+
+        function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            if (email === 'admin@icc.com' && password === 'admin123') {
+                currentUser = {name: 'Admin', email: email};
+                renderDashboard();
+            } else {
+                alert('Identifiants incorrects!');
+            }
+        }
+
+        function renderDashboard() {
+            document.getElementById('app').innerHTML = `
+                <div class="min-h-screen bg-white flex">
+                    <div class="w-64 h-screen bg-white border-r border-gray-200 p-8 overflow-y-auto">
+                        <h2 class="text-lg font-light tracking-tight text-black">Plateforme</h2>
+                        <p class="text-xs font-light text-gray-500 mt-3">${currentUser.name}</p>
+                        <nav class="mt-8 space-y-2">
+                            <button onclick="switchTab('dashboard')" class="w-full text-left px-4 py-2 text-sm font-light text-gray-700 hover:text-black">Tableau de bord</button>
+                            <button onclick="switchTab('departments')" class="w-full text-left px-4 py-2 text-sm font-light text-gray-700 hover:text-black">Départements</button>
+                            <button onclick="switchTab('serviteurs')" class="w-full text-left px-4 py-2 text-sm font-light text-gray-700 hover:text-black">Serviteurs</button>
+                        </nav>
+                        <button onclick="handleLogout()" class="mt-8 w-full px-4 py-2 text-sm font-light text-gray-700 border border-gray-200 hover:bg-gray-50">Déconnexion</button>
+                    </div>
+                    <div class="flex-1 p-12">
+                        <div id="content"></div>
+                    </div>
+                </div>
+            `;
+            renderTab('dashboard');
+        }
+
+        function switchTab(tab) {
+            renderTab(tab);
+        }
+
+        function renderTab(tab) {
+            let content = '';
+            if (tab === 'dashboard') {
+                content = `
+                    <h1 class="text-4xl font-light text-black mb-8">Tableau de bord</h1>
+                    <div class="grid grid-cols-4 gap-8">
+                        <div><p class="text-sm font-light text-gray-500">Serviteurs</p><p class="text-3xl font-light text-black">${stars.length}</p></div>
+                        <div><p class="text-sm font-light text-gray-500">Départements</p><p class="text-3xl font-light text-black">${departments.length}</p></div>
+                    </div>
+                `;
+            } else if (tab === 'departments') {
+                content = `
+                    <h1 class="text-4xl font-light text-black mb-8">Départements</h1>
+                    <div class="space-y-3">
+                        ${departments.map(d => `
+                            <div class="border border-gray-200 p-6">
+                                <h3 class="text-sm font-medium text-black">${d.icon} ${d.name}</h3>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (tab === 'serviteurs') {
+                content = `
+                    <h1 class="text-4xl font-light text-black mb-8">Serviteurs</h1>
+                    <div class="space-y-3">
+                        ${stars.map(s => `
+                            <div class="border border-gray-200 p-6">
+                                <h3 class="text-sm font-medium text-black">${s.name}</h3>
+                                <p class="text-xs font-light text-gray-500 mt-2">${s.email}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            document.getElementById('content').innerHTML = content;
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            renderLogin();
+        }
+
+        renderLogin();
+    </script>
 </body>
 </html>
