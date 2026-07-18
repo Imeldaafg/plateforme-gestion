@@ -52,7 +52,7 @@
 
         const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
-        // Générer le planning d'entretien
+        // Générer le planning d'entretien (Août 2026 à Décembre 2026 puis 2027)
         function generateMaintenanceSchedule() {
             maintenanceSchedule = {};
             const startMonth = 8; // Août
@@ -63,13 +63,15 @@
             let deptIndex = 0;
             const deptsList = departments.slice();
 
+            if (deptsList.length === 0) return;
+
             for (let year = startYear; year <= endYear; year++) {
-                const startM = year === startYear ? startMonth : 1;
+                const startM = year === startYear ? startMonth : 8;
                 const endM = year === endYear ? endMonth : 12;
 
                 for (let month = startM; month <= endM; month++) {
                     const sundays = getSundays(month, year);
-                    const key = `${year}-${month}`;
+                    const key = `${year}-${String(month).padStart(2, '0')}`;
                     maintenanceSchedule[key] = [];
 
                     sundays.forEach((sunday, index) => {
@@ -262,10 +264,10 @@
                             <div class="space-y-3">
                                 ${events.slice(0, 3).map(e => `
                                     <div class="flex items-start gap-4 pb-3 border-b last:border-b-0">
-                                        <div class="w-12 h-12 bg-red-100 rounded flex items-center justify-center">
+                                        <div class="w-12 h-12 bg-red-100 rounded flex items-center justify-center flex-shrink-0">
                                             <span class="text-red-600 font-bold">${new Date(e.date).getDate()}</span>
                                         </div>
-                                        <div>
+                                        <div class="flex-1">
                                             <h3 class="font-medium text-black">${e.title}</h3>
                                             <p class="text-sm text-gray-600">${new Date(e.date).toLocaleDateString('fr-FR')} ${e.startTime ? 'à ' + e.startTime : ''}</p>
                                             ${e.location ? `<p class="text-sm text-gray-500">${e.location}</p>` : ''}
@@ -281,11 +283,11 @@
             else if (activeTab === 'recap') {
                 content = `
                     <div class="space-y-8">
-                        <div class="flex justify-between items-center">
+                        <div class="flex justify-between items-center gap-4">
                             <h1 class="text-4xl font-bold text-black">Services dimanche</h1>
                             <div class="flex gap-4 bg-white rounded-lg p-2 shadow">
                                 <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100 rounded">←</button>
-                                <span class="text-sm font-medium text-gray-700 w-32 text-center">${monthNames[selectedMonth - 1]} ${selectedYear}</span>
+                                <span class="text-sm font-medium text-gray-700 w-40 text-center">${monthNames[selectedMonth - 1]} ${selectedYear}</span>
                                 <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100 rounded">→</button>
                             </div>
                         </div>
@@ -303,18 +305,20 @@
                                                 <h2 class="text-lg font-bold text-black">${formatDate(sunday)}</h2>
                                                 <p class="text-sm text-gray-600 mt-2">${totalServers} star(s) ★ • ${deptsCovered}/${departments.length} départements</p>
                                             </div>
-                                            <span class="text-red-600">▲</span>
+                                            <span class="text-red-600">${isExpanded ? '▲' : '▼'}</span>
                                         </button>
                                         ${isExpanded ? `
                                             <div class="border-t border-gray-200 p-6 bg-gray-50">
-                                                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                                                     ${departments.map(dept => {
                                                         const deptServices = services[dept.id];
                                                         return `
                                                             <div class="space-y-3">
-                                                                <h3 class="font-bold text-black">${dept.name}</h3>
-                                                                <div class="text-sm text-gray-600">${deptServices.stars.length} star(s) ★</div>
-                                                                ${deptServices.stars.length === 0 ? '<p class="text-xs text-gray-400">Aucune star</p>' : deptServices.stars.map(s => `<p class="text-sm text-gray-700 bg-white p-2 rounded">${s.name}</p>`).join('')}
+                                                                <h3 class="font-bold text-black text-sm">${dept.name}</h3>
+                                                                <div class="text-sm text-gray-600">${deptServices.stars.length} star(s)</div>
+                                                                <div class="space-y-1">
+                                                                    ${deptServices.stars.length === 0 ? '<p class="text-xs text-gray-400">Aucune star</p>' : deptServices.stars.map(s => `<p class="text-xs text-gray-700 bg-white p-2 rounded">${s.name}</p>`).join('')}
+                                                                </div>
                                                             </div>
                                                         `;
                                                     }).join('')}
@@ -332,11 +336,11 @@
             else if (activeTab === 'planning') {
                 content = `
                     <div class="space-y-8">
-                        <div class="flex justify-between items-center">
+                        <div class="flex justify-between items-center gap-4">
                             <h1 class="text-4xl font-bold text-black">Planning</h1>
                             <div class="flex gap-4 bg-white rounded-lg p-2 shadow">
                                 <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100 rounded">←</button>
-                                <span class="text-sm font-medium text-gray-700 w-32 text-center">${monthNames[selectedMonth - 1]}</span>
+                                <span class="text-sm font-medium text-gray-700 w-40 text-center">${monthNames[selectedMonth - 1]}</span>
                                 <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100 rounded">→</button>
                             </div>
                         </div>
@@ -346,11 +350,11 @@
                                 return `
                                     <div class="bg-white rounded-lg shadow overflow-hidden">
                                         <button onclick="toggleDeptExpand('${dept.id}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
-                                            <div>
+                                            <div class="flex-1">
                                                 <h2 class="text-lg font-bold text-black">${dept.name}</h2>
                                                 <p class="text-sm text-gray-600 mt-1">${dept.stars.length} star(s) ★</p>
                                             </div>
-                                            <span class="text-red-600 text-xl">${isExpanded ? '▲' : '▼'}</span>
+                                            <span class="text-red-600 text-xl ml-4 flex-shrink-0">${isExpanded ? '▲' : '▼'}</span>
                                         </button>
                                         ${isExpanded ? `
                                             <div class="border-t border-gray-200 p-6 bg-gray-50 space-y-6">
@@ -362,7 +366,7 @@
                                                                 const dateStr = sunday.toISOString().split('T')[0];
                                                                 const avail = isAvailable(dept.id, star.id, dateStr);
                                                                 return `
-                                                                    <button onclick="toggleAvailability('${dept.id}', ${star.id}, '${dateStr}')" class="p-3 border rounded text-xs font-medium transition-colors ${avail ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:border-red-600'}">
+                                                                    <button onclick="toggleAvailability('${dept.id}', ${star.id}, '${dateStr}')" class="p-3 border rounded text-xs font-medium transition-colors h-12 flex items-center justify-center ${avail ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:border-red-600'}">
                                                                         ${sunday.getDate()}
                                                                     </button>
                                                                 `;
@@ -383,38 +387,38 @@
             else if (activeTab === 'departments') {
                 content = `
                     <div class="space-y-8">
-                        <div class="flex justify-between">
+                        <div class="flex justify-between items-center">
                             <h1 class="text-4xl font-bold text-black">Départements</h1>
-                            <button onclick="addDepartment()" class="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow">+ Ajouter</button>
+                            <button onclick="addDepartment()" class="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow transition-colors">+ Ajouter</button>
                         </div>
-                        <div class="space-y-6">
+                        <div class="grid grid-cols-1 gap-4">
                             ${departments.map(dept => {
                                 const isExpanded = expandedDepts[dept.id];
                                 return `
                                     <div class="bg-white rounded-lg shadow overflow-hidden">
                                         <button onclick="toggleDeptExpand('${dept.id}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
-                                            <div>
+                                            <div class="flex-1">
                                                 <h2 class="text-xl font-bold text-black">${dept.name}</h2>
                                                 <p class="text-sm text-gray-600 mt-1">${dept.stars.length} star(s) ★</p>
                                             </div>
-                                            <div class="flex gap-2">
-                                                <button onclick="deleteDepartment('${dept.id}')" class="text-red-600 hover:text-red-700 font-bold mr-2">✕</button>
+                                            <div class="flex items-center gap-3 ml-4 flex-shrink-0">
+                                                <button onclick="event.stopPropagation(); deleteDepartment('${dept.id}')" class="text-red-600 hover:text-red-700 font-bold text-xl">✕</button>
                                                 <span class="text-red-600 text-xl">${isExpanded ? '▲' : '▼'}</span>
                                             </div>
                                         </button>
                                         ${isExpanded ? `
                                             <div class="border-t border-gray-200 p-6 bg-gray-50 space-y-4">
-                                                <button onclick="addStarToDept('${dept.id}')" class="w-full py-2 border-2 border-dashed border-red-300 text-red-600 font-medium rounded-lg hover:bg-red-50">+ Ajouter star ★</button>
+                                                <button onclick="addStarToDept('${dept.id}')" class="w-full py-3 border-2 border-dashed border-red-300 text-red-600 font-medium rounded-lg hover:bg-red-50 transition-colors">+ Ajouter star ★</button>
                                                 <div class="space-y-3">
                                                     ${dept.stars.map(star => `
                                                         <div class="bg-white p-4 rounded-lg border border-gray-200">
-                                                            <div class="flex justify-between items-start">
-                                                                <div>
+                                                            <div class="flex justify-between items-start gap-4">
+                                                                <div class="flex-1">
                                                                     <h3 class="font-bold text-black">${star.name}</h3>
-                                                                    <p class="text-sm text-gray-600">${star.email}</p>
+                                                                    <p class="text-sm text-gray-600 mt-1">${star.email}</p>
                                                                     <p class="text-sm text-gray-600">${star.phone}</p>
                                                                 </div>
-                                                                <button onclick="removeStarFromDept('${dept.id}', ${star.id})" class="text-red-600 hover:text-red-700 font-bold">✕</button>
+                                                                <button onclick="removeStarFromDept('${dept.id}', ${star.id})" class="text-red-600 hover:text-red-700 font-bold text-xl flex-shrink-0">✕</button>
                                                             </div>
                                                         </div>
                                                     `).join('')}
@@ -435,17 +439,17 @@
                     <div class="space-y-8">
                         <h1 class="text-4xl font-bold text-black">Anniversaires</h1>
                         <p class="text-gray-600">Les anniversaires sont générés automatiquement à partir des dates de naissance des stars ★.</p>
-                        <div class="space-y-6">
+                        <div class="space-y-4">
                             ${Object.entries(birthdaysByMonth).map(([monthIndex, birthdays]) => {
                                 const isExpanded = expandedBirthdayMonths[monthIndex];
                                 return `
                                     <div class="bg-white rounded-lg shadow overflow-hidden">
                                         <button onclick="toggleBirthdayMonth(${monthIndex})" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
-                                            <div>
+                                            <div class="flex-1">
                                                 <h2 class="text-xl font-bold text-black">${monthNames[monthIndex]}</h2>
                                                 <p class="text-sm text-gray-600 mt-1">${birthdays.length} anniversaire(s)</p>
                                             </div>
-                                            <span class="text-red-600 text-xl">${isExpanded ? '▲' : '▼'}</span>
+                                            <span class="text-red-600 text-xl ml-4 flex-shrink-0">${isExpanded ? '▲' : '▼'}</span>
                                         </button>
                                         ${isExpanded ? `
                                             <div class="border-t border-gray-200 p-6 bg-gray-50">
@@ -474,20 +478,25 @@
                 content = `
                     <div class="space-y-8">
                         <h1 class="text-4xl font-bold text-black">Entretien</h1>
-                        <p class="text-gray-600">Chaque département assure l'entretien à tour de rôle, une semaine par mois.</p>
-                        <div class="space-y-6">
-                            ${['2026-08', '2026-09', '2026-10', '2026-11', '2026-12'].map(key => {
+                        <p class="text-gray-600">Chaque département assure l'entretien à tour de rôle, une semaine par mois (août-décembre 2026).</p>
+                        <div class="grid grid-cols-1 gap-6">
+                            ${Object.entries(maintenanceSchedule).map(([key, schedule]) => {
                                 const [year, month] = key.split('-');
                                 const monthIndex = parseInt(month) - 1;
-                                const schedule = maintenanceSchedule[key] || [];
                                 return `
                                     <div class="bg-white rounded-lg shadow p-6">
-                                        <h2 class="text-xl font-bold text-black mb-4">${monthNames[monthIndex]} ${year}</h2>
-                                        <div class="space-y-2">
-                                            ${schedule.map(item => `
-                                                <div class="p-4 bg-gradient-to-r from-red-50 to-red-100 rounded-lg border-l-4 border-red-600">
-                                                    <p class="text-sm text-gray-600">${formatDate(item.sunday)}</p>
-                                                    <p class="text-lg font-bold text-black">${item.dept.name}</p>
+                                        <h2 class="text-2xl font-bold text-black mb-6">${monthNames[monthIndex]} ${year}</h2>
+                                        <div class="space-y-4">
+                                            ${schedule.map((item, idx) => `
+                                                <div class="flex items-start gap-4 pb-4 border-b last:border-b-0">
+                                                    <div class="w-16 h-16 bg-red-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                                                        <span class="text-lg font-bold text-red-600">${item.sunday.getDate()}</span>
+                                                        <span class="text-xs text-red-600">Semaine ${item.week}</span>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <p class="text-sm text-gray-600">${formatDate(item.sunday)}</p>
+                                                        <p class="text-xl font-bold text-black mt-1">${item.dept.name}</p>
+                                                    </div>
                                                 </div>
                                             `).join('')}
                                         </div>
@@ -502,20 +511,20 @@
             else if (activeTab === 'events') {
                 content = `
                     <div class="space-y-8">
-                        <div class="flex justify-between">
+                        <div class="flex justify-between items-center">
                             <h1 class="text-4xl font-bold text-black">Événements</h1>
-                            <button onclick="addEvent()" class="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow">+ Ajouter</button>
+                            <button onclick="addEvent()" class="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow transition-colors">+ Ajouter</button>
                         </div>
                         <div class="space-y-4">
-                            ${events.map(e => `
+                            ${events.length === 0 ? '<p class="text-gray-600">Aucun événement</p>' : events.map(e => `
                                 <div class="bg-white rounded-lg shadow p-6 border-l-4 border-red-600">
-                                    <div class="flex justify-between items-start">
-                                        <div>
+                                    <div class="flex justify-between items-start gap-4">
+                                        <div class="flex-1">
                                             <h3 class="text-lg font-bold text-black">${e.title}</h3>
                                             <p class="text-gray-600 mt-2">${new Date(e.date).toLocaleDateString('fr-FR')} ${e.startTime ? 'à ' + e.startTime : ''}</p>
                                             ${e.location ? `<p class="text-gray-600">${e.location}</p>` : ''}
                                         </div>
-                                        <button onclick="deleteEvent(${e.id})" class="text-red-600 hover:text-red-700 font-bold">✕</button>
+                                        <button onclick="deleteEvent(${e.id})" class="text-red-600 hover:text-red-700 font-bold text-xl flex-shrink-0">✕</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -547,7 +556,7 @@
                             <h2 class="font-bold text-black">Plateforme</h2>
                             <button onclick="toggleSidebar()" class="p-2 text-red-600">☰</button>
                         </div>
-                        <div class="p-6 md:p-12">
+                        <div class="p-6 md:p-12 max-w-7xl mx-auto">
                             ${content}
                         </div>
                     </div>
