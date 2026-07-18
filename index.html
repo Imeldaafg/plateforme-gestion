@@ -19,15 +19,31 @@
         let selectedYear = 2026;
 
         let departments = [];
-
-        let events = [
-            {id: 1, title: 'Culte Dimanche', date: '2026-07-05', startTime: '10:00', type: 'culte', location: 'Église ICC'}
-        ];
-
+        let events = [];
         let availability = {};
         let maintenanceSchedule = {};
 
         const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+        // CHARGER LES DONNÉES DEPUIS localStorage
+        function loadData() {
+            const savedDepts = localStorage.getItem('departments');
+            const savedEvents = localStorage.getItem('events');
+            const savedAvailability = localStorage.getItem('availability');
+            
+            if (savedDepts) departments = JSON.parse(savedDepts);
+            if (savedEvents) events = JSON.parse(savedEvents);
+            if (savedAvailability) availability = JSON.parse(savedAvailability);
+            
+            generateMaintenanceSchedule();
+        }
+
+        // SAUVEGARDER LES DONNÉES DANS localStorage
+        function saveData() {
+            localStorage.setItem('departments', JSON.stringify(departments));
+            localStorage.setItem('events', JSON.stringify(events));
+            localStorage.setItem('availability', JSON.stringify(availability));
+        }
 
         // Générer le planning d'entretien (Août 2026 à Décembre 2026 puis 2027)
         function generateMaintenanceSchedule() {
@@ -180,6 +196,7 @@
         function toggleAvailability(deptId, starId, dateStr) {
             const key = `${deptId}_${starId}_${dateStr}`;
             availability[key] = !availability[key];
+            saveData();
             render();
         }
 
@@ -593,70 +610,10 @@
             if (!name) return;
             departments.push({id: name.toLowerCase().replace(/\s+/g, '_'), name: name, stars: []});
             generateMaintenanceSchedule();
+            saveData();
             render();
         }
 
         function deleteDepartment(deptId) {
             if (confirm('Êtes-vous sûr de vouloir supprimer ce département?')) {
                 departments = departments.filter(d => d.id !== deptId);
-                generateMaintenanceSchedule();
-                render();
-            }
-        }
-
-        function addStarToDept(deptId) {
-            const name = prompt('Nom de la star:');
-            if (!name) return;
-            const email = prompt('Email:');
-            const phone = prompt('Téléphone:');
-            const birthDate = prompt('Date de naissance (YYYY-MM-DD):');
-            
-            const dept = departments.find(d => d.id === deptId);
-            if (dept) {
-                dept.stars.push({
-                    id: Date.now(),
-                    name: name,
-                    email: email || '',
-                    phone: phone || '',
-                    birthDate: birthDate || ''
-                });
-                render();
-            }
-        }
-
-        function removeStarFromDept(deptId, starId) {
-            const dept = departments.find(d => d.id === deptId);
-            if (dept && confirm('Êtes-vous sûr?')) {
-                dept.stars = dept.stars.filter(s => s.id !== starId);
-                render();
-            }
-        }
-
-        function addEvent() {
-            const title = prompt('Titre:');
-            if (!title) return;
-            const date = prompt('Date (YYYY-MM-DD):');
-            const startTime = prompt('Heure (HH:MM):');
-            const location = prompt('Lieu:');
-            events.push({
-                id: Date.now(),
-                title: title,
-                date: date || '',
-                startTime: startTime || '',
-                type: 'culte',
-                location: location || ''
-            });
-            render();
-        }
-
-        function deleteEvent(id) {
-            if (confirm('Êtes-vous sûr?')) {
-                events = events.filter(e => e.id !== id);
-                render();
-            }
-        }
-
-        render();
-    </script>
-</body>
-</html>
