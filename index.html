@@ -6,7 +6,7 @@
     <title>Plateforme de gestion ICC</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-white">
+<body class="bg-gray-50">
     <div id="app"></div>
     <script>
         let currentUser = null;
@@ -17,31 +17,29 @@
         let selectedMonth = 7;
         let selectedYear = 2026;
 
-        const departments = [
-            {id: 'accueil', name: 'Accueil', icon: '🚪'},
-            {id: 'louange', name: 'Louange', icon: '🎵'},
-            {id: 'enfants', name: 'Enfants', icon: '👶'},
-            {id: 'jeunesse', name: 'Jeunesse', icon: '👦'},
-            {id: 'intercession', name: 'Intercession', icon: '🙏'},
-            {id: 'streaming', name: 'Streaming', icon: '🎥'},
-            {id: 'nettoyage', name: 'Nettoyage', icon: '🧹'},
-            {id: 'logistique', name: 'Logistique', icon: '📦'}
-        ];
-
-        let stars = [
-            {id: 1, name: 'Elvis Jean', email: 'elvis@icc.com', phone: '0612345678', birthDate: '1985-03-15', departments: ['accueil', 'louange']},
-            {id: 2, name: 'Béni Koffi', email: 'beni@icc.com', phone: '0623456789', birthDate: '1990-07-22', departments: ['enfants', 'jeunesse']},
-            {id: 3, name: 'Déborah Sall', email: 'deborah@icc.com', phone: '0634567890', birthDate: '1988-05-10', departments: ['accueil', 'intercession']},
-            {id: 4, name: 'Jemima Diallo', email: 'jemima@icc.com', phone: '0645678901', birthDate: '1992-08-20', departments: ['accueil']},
-            {id: 5, name: 'Ange Nkwenchia', email: 'ange@icc.com', phone: '0656789012', birthDate: '1987-06-30', departments: ['louange', 'streaming']}
-        ];
-
-        let birthdays = [
-            {id: 1, name: 'Elvis Jean', date: '1985-03-15'},
-            {id: 2, name: 'Béni Koffi', date: '1990-07-22'},
-            {id: 3, name: 'Déborah Sall', date: '1988-05-10'},
-            {id: 4, name: 'Jemima Diallo', date: '1992-08-20'},
-            {id: 5, name: 'Ange Nkwenchia', date: '1987-06-30'}
+        let departments = [
+            {id: 'accueil', name: 'Accueil', stars: [
+                {id: 1, name: 'Elvis Jean', email: 'elvis@icc.com', phone: '0612345678', birthDate: '1985-03-15'},
+                {id: 3, name: 'Déborah Sall', email: 'deborah@icc.com', phone: '0634567890', birthDate: '1988-05-10'}
+            ]},
+            {id: 'louange', name: 'Louange', stars: [
+                {id: 1, name: 'Elvis Jean', email: 'elvis@icc.com', phone: '0612345678', birthDate: '1985-03-15'},
+                {id: 5, name: 'Ange Nkwenchia', email: 'ange@icc.com', phone: '0656789012', birthDate: '1987-06-30'}
+            ]},
+            {id: 'enfants', name: 'Enfants', stars: [
+                {id: 2, name: 'Béni Koffi', email: 'beni@icc.com', phone: '0623456789', birthDate: '1990-07-22'}
+            ]},
+            {id: 'jeunesse', name: 'Jeunesse', stars: [
+                {id: 2, name: 'Béni Koffi', email: 'beni@icc.com', phone: '0623456789', birthDate: '1990-07-22'}
+            ]},
+            {id: 'intercession', name: 'Intercession', stars: [
+                {id: 3, name: 'Déborah Sall', email: 'deborah@icc.com', phone: '0634567890', birthDate: '1988-05-10'}
+            ]},
+            {id: 'streaming', name: 'Streaming', stars: [
+                {id: 5, name: 'Ange Nkwenchia', email: 'ange@icc.com', phone: '0656789012', birthDate: '1987-06-30'}
+            ]},
+            {id: 'nettoyage', name: 'Nettoyage', stars: []},
+            {id: 'logistique', name: 'Logistique', stars: []}
         ];
 
         let events = [
@@ -51,6 +49,29 @@
         let availability = {};
 
         const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+        function getAllStars() {
+            const allStars = {};
+            departments.forEach(dept => {
+                dept.stars.forEach(star => {
+                    if (!allStars[star.id]) {
+                        allStars[star.id] = star;
+                    }
+                });
+            });
+            return Object.values(allStars);
+        }
+
+        function getBirthdaysFromStars() {
+            const birthdays = [];
+            const stars = getAllStars();
+            stars.forEach(star => {
+                if (star.birthDate && !birthdays.some(b => b.id === star.id)) {
+                    birthdays.push({id: star.id, name: star.name, date: star.birthDate});
+                }
+            });
+            return birthdays.sort((a, b) => new Date(a.date).getMonth() - new Date(b.date).getMonth());
+        }
 
         function render() {
             if (!currentUser) {
@@ -62,22 +83,23 @@
 
         function renderLogin() {
             document.getElementById('app').innerHTML = `
-                <div class="min-h-screen bg-white flex items-center justify-center p-4">
-                    <div class="w-full max-w-md space-y-12">
+                <div class="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center p-4">
+                    <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8 space-y-8">
                         <div class="text-center space-y-2">
-                            <h1 class="text-3xl font-light tracking-tight text-black">Plateforme de gestion</h1>
-                            <p class="text-sm font-light text-gray-500">ICC Lyon Sud</p>
-                        </div>
-                        <div class="space-y-6">
-                            <div class="space-y-4">
-                                <input id="email" type="email" placeholder="Email" value="admin@icc.com" class="w-full px-4 py-3 border border-gray-200 bg-white text-black placeholder-gray-400 text-sm focus:outline-none focus:border-red-500" />
-                                <input id="password" type="password" placeholder="Mot de passe" value="admin123" class="w-full px-4 py-3 border border-gray-200 bg-white text-black placeholder-gray-400 text-sm focus:outline-none focus:border-red-500" />
+                            <div class="w-12 h-12 bg-red-600 rounded-lg mx-auto flex items-center justify-center">
+                                <span class="text-white text-lg font-bold">P</span>
                             </div>
-                            <button onclick="handleLogin()" class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">Connexion</button>
+                            <h1 class="text-3xl font-bold tracking-tight text-black">Plateforme de gestion</h1>
+                            <p class="text-sm font-light text-gray-600">ICC Lyon Sud</p>
                         </div>
-                        <div class="text-center space-y-2 pt-8 border-t border-gray-200">
-                            <p class="text-xs font-light text-gray-500">Identifiants de test</p>
-                            <p class="text-xs text-gray-600">admin@icc.com / admin123</p>
+                        <div class="space-y-4">
+                            <input id="email" type="email" placeholder="Email" value="admin@icc.com" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                            <input id="password" type="password" placeholder="Mot de passe" value="admin123" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                        </div>
+                        <button onclick="handleLogin()" class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg transition-colors">Connexion</button>
+                        <div class="text-center space-y-2 pt-4 border-t border-gray-200">
+                            <p class="text-xs font-light text-gray-600">Identifiants de test</p>
+                            <p class="text-xs text-gray-700">admin@icc.com / admin123</p>
                         </div>
                     </div>
                 </div>
@@ -123,18 +145,14 @@
             return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
         }
 
-        function toggleAvailability(starId, dateStr) {
-            const key = `${starId}_${dateStr}`;
+        function toggleAvailability(deptId, starId, dateStr) {
+            const key = `${deptId}_${starId}_${dateStr}`;
             availability[key] = !availability[key];
             render();
         }
 
-        function isAvailable(starId, dateStr) {
-            return availability[`${starId}_${dateStr}`] || false;
-        }
-
-        function getStarsByDept(deptId) {
-            return stars.filter(s => s.departments.includes(deptId));
+        function isAvailable(deptId, starId, dateStr) {
+            return availability[`${deptId}_${starId}_${dateStr}`] || false;
         }
 
         function getServicesForSunday(sunday) {
@@ -143,12 +161,7 @@
             departments.forEach(dept => {
                 result[dept.id] = {
                     name: dept.name,
-                    icon: dept.icon,
-                    stars: stars.filter(star => {
-                        const isInDept = star.departments.includes(dept.id);
-                        const isAvail = isAvailable(star.id, dateStr);
-                        return isInDept && isAvail;
-                    })
+                    stars: dept.stars.filter(star => isAvailable(dept.id, star.id, dateStr))
                 };
             });
             return result;
@@ -161,20 +174,52 @@
 
         function renderDashboard() {
             const sundays = getSundays(selectedMonth, selectedYear);
+            const allStars = getAllStars();
             let content = '';
 
             if (activeTab === 'dashboard') {
+                const nextSunday = sundays[0];
+                const totalServ = nextSunday ? countTotalServers(nextSunday) : 0;
                 content = `
                     <div class="space-y-12">
                         <div class="space-y-2">
-                            <h1 class="text-4xl font-light tracking-tight text-black">Tableau de bord</h1>
-                            <p class="text-sm font-light text-gray-500">Vue d'ensemble</p>
+                            <h1 class="text-4xl font-bold text-black">Bienvenue</h1>
+                            <p class="text-gray-600">Vue d'ensemble de votre plateforme</p>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                            <div><p class="text-sm font-light text-gray-500">Serviteurs</p><p class="text-3xl font-light text-black">${stars.length}</p></div>
-                            <div><p class="text-sm font-light text-gray-500">Départements</p><p class="text-3xl font-light text-black">${departments.length}</p></div>
-                            <div><p class="text-sm font-light text-gray-500">Anniversaires</p><p class="text-3xl font-light text-black">${birthdays.length}</p></div>
-                            <div><p class="text-sm font-light text-gray-500">Événements</p><p class="text-3xl font-light text-black">${events.length}</p></div>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-6 text-white shadow-lg">
+                                <p class="text-sm font-light opacity-90">Stars ★</p>
+                                <p class="text-4xl font-bold mt-2">${allStars.length}</p>
+                            </div>
+                            <div class="bg-gradient-to-br from-red-400 to-red-500 rounded-lg p-6 text-white shadow-lg">
+                                <p class="text-sm font-light opacity-90">Départements</p>
+                                <p class="text-4xl font-bold mt-2">${departments.length}</p>
+                            </div>
+                            <div class="bg-gradient-to-br from-red-300 to-red-400 rounded-lg p-6 text-white shadow-lg">
+                                <p class="text-sm font-light opacity-90">Prochaines stars ★</p>
+                                <p class="text-4xl font-bold mt-2">${totalServ}</p>
+                            </div>
+                            <div class="bg-gradient-to-br from-red-600 to-red-700 rounded-lg p-6 text-white shadow-lg">
+                                <p class="text-sm font-light opacity-90">Événements</p>
+                                <p class="text-4xl font-bold mt-2">${events.length}</p>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h2 class="text-xl font-bold text-black mb-4">Prochains événements</h2>
+                            <div class="space-y-3">
+                                ${events.slice(0, 3).map(e => `
+                                    <div class="flex items-start gap-4 pb-3 border-b last:border-b-0">
+                                        <div class="w-12 h-12 bg-red-100 rounded flex items-center justify-center">
+                                            <span class="text-red-600 font-bold">${new Date(e.date).getDate()}</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-medium text-black">${e.title}</h3>
+                                            <p class="text-sm text-gray-600">${new Date(e.date).toLocaleDateString('fr-FR')} ${e.startTime ? 'à ' + e.startTime : ''}</p>
+                                            ${e.location ? `<p class="text-sm text-gray-500">${e.location}</p>` : ''}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -184,11 +229,11 @@
                 content = `
                     <div class="space-y-8">
                         <div class="flex justify-between items-center">
-                            <h1 class="text-4xl font-light text-black">Services dimanche</h1>
-                            <div class="flex gap-4">
-                                <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100">←</button>
-                                <span class="text-sm font-light text-gray-700 w-32 text-center">${monthNames[selectedMonth - 1]}</span>
-                                <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100">→</button>
+                            <h1 class="text-4xl font-bold text-black">Services dimanche</h1>
+                            <div class="flex gap-4 bg-white rounded-lg p-2 shadow">
+                                <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100 rounded">←</button>
+                                <span class="text-sm font-medium text-gray-700 w-32 text-center">${monthNames[selectedMonth - 1]} ${selectedYear}</span>
+                                <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100 rounded">→</button>
                             </div>
                         </div>
                         <div class="space-y-4">
@@ -199,24 +244,24 @@
                                 const totalServers = countTotalServers(sunday);
                                 const deptsCovered = Object.values(services).filter(d => d.stars.length > 0).length;
                                 return `
-                                    <div class="border border-gray-200">
-                                        <button onclick="toggleSundayExpand('${dateStr}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center">
+                                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                                        <button onclick="toggleSundayExpand('${dateStr}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
                                             <div class="text-left">
-                                                <h2 class="text-sm font-medium text-black">${formatDate(sunday)}</h2>
-                                                <p class="text-xs font-light text-gray-500 mt-2">${totalServers} serviteur(s) • ${deptsCovered}/${departments.length} départements</p>
+                                                <h2 class="text-lg font-bold text-black">${formatDate(sunday)}</h2>
+                                                <p class="text-sm text-gray-600 mt-2">${totalServers} star(s) ★ • ${deptsCovered}/${departments.length} départements</p>
                                             </div>
-                                            <span>${isExpanded ? '▲' : '▼'}</span>
+                                            <span class="text-red-600">▲</span>
                                         </button>
                                         ${isExpanded ? `
                                             <div class="border-t border-gray-200 p-6 bg-gray-50">
-                                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                                                     ${departments.map(dept => {
                                                         const deptServices = services[dept.id];
                                                         return `
-                                                            <div class="space-y-2">
-                                                                <h3 class="text-sm font-medium text-black">${dept.icon} ${dept.name}</h3>
-                                                                <p class="text-xs font-light text-gray-500">${deptServices.stars.length} serviteur(s)</p>
-                                                                ${deptServices.stars.length === 0 ? '<p class="text-xs text-gray-400">Aucun</p>' : deptServices.stars.map(s => `<p class="text-xs text-gray-700">${s.name}</p>`).join('')}
+                                                            <div class="space-y-3">
+                                                                <h3 class="font-bold text-black">${dept.name}</h3>
+                                                                <div class="text-sm text-gray-600">${deptServices.stars.length} star(s) ★</div>
+                                                                ${deptServices.stars.length === 0 ? '<p class="text-xs text-gray-400">Aucune star</p>' : deptServices.stars.map(s => `<p class="text-sm text-gray-700 bg-white p-2 rounded">${s.name}</p>`).join('')}
                                                             </div>
                                                         `;
                                                     }).join('')}
@@ -234,36 +279,37 @@
             else if (activeTab === 'planning') {
                 content = `
                     <div class="space-y-8">
-                        <h1 class="text-4xl font-light text-black">Planning</h1>
-                        <div class="flex gap-4">
-                            <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100">←</button>
-                            <span class="text-sm font-light text-gray-700 w-32 text-center">${monthNames[selectedMonth - 1]}</span>
-                            <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100">→</button>
+                        <div class="flex justify-between items-center">
+                            <h1 class="text-4xl font-bold text-black">Planning</h1>
+                            <div class="flex gap-4 bg-white rounded-lg p-2 shadow">
+                                <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100 rounded">←</button>
+                                <span class="text-sm font-medium text-gray-700 w-32 text-center">${monthNames[selectedMonth - 1]}</span>
+                                <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100 rounded">→</button>
+                            </div>
                         </div>
-                        <div class="space-y-6">
+                        <div class="space-y-4">
                             ${departments.map(dept => {
-                                const deptStars = getStarsByDept(dept.id);
                                 const isExpanded = expandedDepts[dept.id];
                                 return `
-                                    <div class="border border-gray-200">
-                                        <button onclick="toggleDeptExpand('${dept.id}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center">
+                                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                                        <button onclick="toggleDeptExpand('${dept.id}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
                                             <div>
-                                                <h2 class="text-sm font-medium text-black">${dept.icon} ${dept.name}</h2>
-                                                <p class="text-xs font-light text-gray-500 mt-1">${deptStars.length} serviteur(s)</p>
+                                                <h2 class="text-lg font-bold text-black">${dept.name}</h2>
+                                                <p class="text-sm text-gray-600 mt-1">${dept.stars.length} star(s) ★</p>
                                             </div>
-                                            <span>${isExpanded ? '▲' : '▼'}</span>
+                                            <span class="text-red-600 text-xl">${isExpanded ? '▲' : '▼'}</span>
                                         </button>
                                         ${isExpanded ? `
                                             <div class="border-t border-gray-200 p-6 bg-gray-50 space-y-6">
-                                                ${deptStars.map(star => `
+                                                ${dept.stars.length === 0 ? '<p class="text-gray-600">Aucune star</p>' : dept.stars.map(star => `
                                                     <div>
-                                                        <h3 class="text-sm font-medium text-black mb-3">${star.name}</h3>
+                                                        <h3 class="font-bold text-black mb-3">${star.name}</h3>
                                                         <div class="grid grid-cols-4 gap-2">
                                                             ${sundays.map(sunday => {
                                                                 const dateStr = sunday.toISOString().split('T')[0];
-                                                                const avail = isAvailable(star.id, dateStr);
+                                                                const avail = isAvailable(dept.id, star.id, dateStr);
                                                                 return `
-                                                                    <button onclick="toggleAvailability(${star.id}, '${dateStr}')" class="p-2 border text-xs font-light transition-colors ${avail ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}">
+                                                                    <button onclick="toggleAvailability('${dept.id}', ${star.id}, '${dateStr}')" class="p-3 border rounded text-xs font-medium transition-colors ${avail ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:border-red-600'}">
                                                                         ${sunday.getDate()}
                                                                     </button>
                                                                 `;
@@ -281,53 +327,75 @@
                 `;
             }
 
-            else if (activeTab === 'stars') {
+            else if (activeTab === 'departments') {
                 content = `
                     <div class="space-y-8">
                         <div class="flex justify-between">
-                            <h1 class="text-4xl font-light text-black">Serviteurs</h1>
-                            <button onclick="addStar()" class="px-6 py-2 bg-red-600 text-white text-sm font-medium hover:bg-red-700">+ Ajouter</button>
+                            <h1 class="text-4xl font-bold text-black">Départements</h1>
+                            <button onclick="addDepartment()" class="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow">+ Ajouter</button>
                         </div>
-                        <div class="space-y-3">
-                            ${stars.map(star => `
-                                <div class="border border-gray-200 p-6 hover:bg-gray-50">
-                                    <h3 class="text-sm font-medium text-black">${star.name}</h3>
-                                    <p class="text-xs font-light text-gray-500 mt-1">${star.email}</p>
-                                    <div class="flex gap-2 mt-3">
-                                        ${star.departments.map(d => {
-                                            const dept = departments.find(dp => dp.id === d);
-                                            return `<span class="text-xs bg-red-50 text-red-700 px-2 py-1">${dept.icon}</span>`;
-                                        }).join('')}
+                        <div class="space-y-6">
+                            ${departments.map(dept => {
+                                const isExpanded = expandedDepts[dept.id];
+                                return `
+                                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                                        <button onclick="toggleDeptExpand('${dept.id}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
+                                            <div>
+                                                <h2 class="text-xl font-bold text-black">${dept.name}</h2>
+                                                <p class="text-sm text-gray-600 mt-1">${dept.stars.length} star(s) ★</p>
+                                            </div>
+                                            <span class="text-red-600 text-xl">${isExpanded ? '▲' : '▼'}</span>
+                                        </button>
+                                        ${isExpanded ? `
+                                            <div class="border-t border-gray-200 p-6 bg-gray-50 space-y-4">
+                                                <button onclick="addStarToDept('${dept.id}')" class="w-full py-2 border-2 border-dashed border-red-300 text-red-600 font-medium rounded-lg hover:bg-red-50">+ Ajouter star ★</button>
+                                                <div class="space-y-3">
+                                                    ${dept.stars.map(star => `
+                                                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                                                            <div class="flex justify-between items-start">
+                                                                <div>
+                                                                    <h3 class="font-bold text-black">${star.name}</h3>
+                                                                    <p class="text-sm text-gray-600">${star.email}</p>
+                                                                    <p class="text-sm text-gray-600">${star.phone}</p>
+                                                                </div>
+                                                                <button onclick="removeStarFromDept('${dept.id}', ${star.id})" class="text-red-600 hover:text-red-700 font-bold">✕</button>
+                                                            </div>
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                            </div>
+                                        ` : ''}
                                     </div>
-                                    <div class="flex gap-2 mt-3">
-                                        <button onclick="editStar(${star.id})" class="text-gray-400 hover:text-black">✏️</button>
-                                        <button onclick="deleteStar(${star.id})" class="text-gray-400 hover:text-red-600">🗑️</button>
-                                    </div>
-                                </div>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </div>
                     </div>
                 `;
             }
 
             else if (activeTab === 'birthdays') {
+                const birthdays = getBirthdaysFromStars();
                 content = `
                     <div class="space-y-8">
-                        <div class="flex justify-between">
-                            <h1 class="text-4xl font-light text-black">Anniversaires</h1>
-                            <button onclick="addBirthday()" class="px-6 py-2 bg-red-600 text-white text-sm font-medium hover:bg-red-700">+ Ajouter</button>
-                        </div>
-                        <div class="space-y-3">
-                            ${birthdays.map(b => `
-                                <div class="border border-gray-200 p-6 hover:bg-gray-50">
-                                    <h3 class="text-sm font-medium text-black">${b.name}</h3>
-                                    <p class="text-xs font-light text-gray-500 mt-1">${new Date(b.date).toLocaleDateString('fr-FR')}</p>
-                                    <div class="flex gap-2 mt-3">
-                                        <button onclick="editBirthday(${b.id})" class="text-gray-400 hover:text-black">✏️</button>
-                                        <button onclick="deleteBirthday(${b.id})" class="text-gray-400 hover:text-red-600">🗑️</button>
+                        <h1 class="text-4xl font-bold text-black">Anniversaires</h1>
+                        <p class="text-gray-600">Les anniversaires sont générés automatiquement à partir des dates de naissance des stars ★.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            ${birthdays.map(b => {
+                                const date = new Date(b.date);
+                                const today = new Date();
+                                const isToday = date.getMonth() === today.getMonth() && date.getDate() === today.getDate();
+                                return `
+                                    <div class="bg-white rounded-lg shadow p-6 border-l-4 ${isToday ? 'border-red-600' : 'border-gray-200'}">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <h3 class="text-lg font-bold text-black">${b.name}</h3>
+                                                <p class="text-2xl font-bold text-red-600 mt-2">${date.getDate()} ${monthNames[date.getMonth()]}</p>
+                                            </div>
+                                            ${isToday ? '<span class="text-red-600 font-bold text-sm">Aujourd\'hui</span>' : ''}
+                                        </div>
                                     </div>
-                                </div>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </div>
                     </div>
                 `;
@@ -337,18 +405,19 @@
                 content = `
                     <div class="space-y-8">
                         <div class="flex justify-between">
-                            <h1 class="text-4xl font-light text-black">Événements</h1>
-                            <button onclick="addEvent()" class="px-6 py-2 bg-red-600 text-white text-sm font-medium hover:bg-red-700">+ Ajouter</button>
+                            <h1 class="text-4xl font-bold text-black">Événements</h1>
+                            <button onclick="addEvent()" class="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow">+ Ajouter</button>
                         </div>
-                        <div class="space-y-3">
+                        <div class="space-y-4">
                             ${events.map(e => `
-                                <div class="border border-gray-200 p-6 hover:bg-gray-50">
-                                    <h3 class="text-sm font-medium text-black">${e.title}</h3>
-                                    <p class="text-xs font-light text-gray-500 mt-1">${new Date(e.date).toLocaleDateString('fr-FR')} ${e.startTime ? 'à ' + e.startTime : ''}</p>
-                                    ${e.location ? `<p class="text-xs font-light text-gray-500">📍 ${e.location}</p>` : ''}
-                                    <div class="flex gap-2 mt-3">
-                                        <button onclick="editEvent(${e.id})" class="text-gray-400 hover:text-black">✏️</button>
-                                        <button onclick="deleteEvent(${e.id})" class="text-gray-400 hover:text-red-600">🗑️</button>
+                                <div class="bg-white rounded-lg shadow p-6 border-l-4 border-red-600">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h3 class="text-lg font-bold text-black">${e.title}</h3>
+                                            <p class="text-gray-600 mt-2">${new Date(e.date).toLocaleDateString('fr-FR')} ${e.startTime ? 'à ' + e.startTime : ''}</p>
+                                            ${e.location ? `<p class="text-gray-600">${e.location}</p>` : ''}
+                                        </div>
+                                        <button onclick="deleteEvent(${e.id})" class="text-red-600 hover:text-red-700 font-bold">✕</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -357,49 +426,29 @@
                 `;
             }
 
-            else if (activeTab === 'departments') {
-                content = `
-                    <div class="space-y-8">
-                        <div class="flex justify-between">
-                            <h1 class="text-4xl font-light text-black">Départements</h1>
-                        </div>
-                        <div class="space-y-3">
-                            ${departments.map(d => {
-                                const deptStars = stars.filter(s => s.departments.includes(d.id));
-                                return `
-                                    <div class="border border-gray-200 p-6 hover:bg-gray-50">
-                                        <h3 class="text-sm font-medium text-black">${d.icon} ${d.name}</h3>
-                                        <p class="text-xs font-light text-gray-500 mt-1">${deptStars.length} serviteur(s)</p>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-
             document.getElementById('app').innerHTML = `
-                <div class="min-h-screen bg-white flex">
-                    <div class="${sidebarOpen ? '' : 'hidden'} md:block w-64 h-screen bg-white border-r border-gray-200 p-8 overflow-y-auto fixed md:relative z-40">
-                        <h2 class="text-lg font-light tracking-tight text-black">Plateforme de gestion</h2>
-                        <p class="text-xs font-light text-gray-500 mt-3">${currentUser.name}</p>
-                        <nav class="mt-8 space-y-1">
-                            <button onclick="switchTab('dashboard')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'dashboard' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Tableau de bord</button>
-                            <button onclick="switchTab('recap')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'recap' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Récapitulatif</button>
-                            <button onclick="switchTab('planning')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'planning' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Planning</button>
-                            <button onclick="switchTab('stars')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'stars' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Serviteurs</button>
-                            <button onclick="switchTab('birthdays')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'birthdays' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Anniversaires</button>
-                            <button onclick="switchTab('events')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'events' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Événements</button>
-                            <button onclick="switchTab('departments')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'departments' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Départements</button>
+                <div class="min-h-screen bg-gray-50 flex">
+                    <div class="${sidebarOpen ? '' : 'hidden'} md:block w-64 h-screen bg-white border-r border-gray-200 p-6 overflow-y-auto fixed md:relative z-40 shadow">
+                        <div class="mb-8">
+                            <h2 class="text-xl font-bold text-black">Plateforme</h2>
+                            <p class="text-sm text-gray-600 mt-1">${currentUser.name}</p>
+                        </div>
+                        <nav class="space-y-2">
+                            <button onclick="switchTab('dashboard')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Tableau de bord</button>
+                            <button onclick="switchTab('recap')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'recap' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Récapitulatif</button>
+                            <button onclick="switchTab('planning')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'planning' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Planning</button>
+                            <button onclick="switchTab('departments')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'departments' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Départements</button>
+                            <button onclick="switchTab('birthdays')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'birthdays' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Anniversaires</button>
+                            <button onclick="switchTab('events')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'events' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Événements</button>
                         </nav>
-                        <button onclick="handleLogout()" class="mt-8 w-full px-4 py-2 text-sm font-light text-gray-700 border border-gray-200 hover:bg-gray-50">Déconnexion</button>
+                        <button onclick="handleLogout()" class="mt-8 w-full px-4 py-3 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Déconnexion</button>
                     </div>
                     <div class="flex-1 overflow-auto">
-                        <div class="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center">
-                            <h2 class="font-light text-black">Plateforme</h2>
-                            <button onclick="toggleSidebar()" class="p-2">☰</button>
+                        <div class="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center shadow">
+                            <h2 class="font-bold text-black">Plateforme</h2>
+                            <button onclick="toggleSidebar()" class="p-2 text-red-600">☰</button>
                         </div>
-                        <div class="p-8 md:p-12">
+                        <div class="p-6 md:p-12">
                             ${content}
                         </div>
                     </div>
@@ -434,49 +483,37 @@
             render();
         }
 
-        function addStar() {
-            const name = prompt('Nom:');
+        function addDepartment() {
+            const name = prompt('Nom du département:');
+            if (!name) return;
+            departments.push({id: name.toLowerCase().replace(/\s+/g, '_'), name: name, stars: []});
+            render();
+        }
+
+        function addStarToDept(deptId) {
+            const name = prompt('Nom de la star:');
             if (!name) return;
             const email = prompt('Email:');
             const phone = prompt('Téléphone:');
             const birthDate = prompt('Date de naissance (YYYY-MM-DD):');
-            stars.push({
-                id: Date.now(),
-                name: name,
-                email: email || '',
-                phone: phone || '',
-                birthDate: birthDate || '',
-                departments: []
-            });
-            render();
-        }
-
-        function editStar(id) {
-            alert('Édition: fonctionnalité à implémenter');
-        }
-
-        function deleteStar(id) {
-            if (confirm('Êtes-vous sûr?')) {
-                stars = stars.filter(s => s.id !== id);
+            
+            const dept = departments.find(d => d.id === deptId);
+            if (dept) {
+                dept.stars.push({
+                    id: Date.now(),
+                    name: name,
+                    email: email || '',
+                    phone: phone || '',
+                    birthDate: birthDate || ''
+                });
                 render();
             }
         }
 
-        function addBirthday() {
-            const name = prompt('Nom:');
-            if (!name) return;
-            const date = prompt('Date (YYYY-MM-DD):');
-            birthdays.push({id: Date.now(), name: name, date: date || ''});
-            render();
-        }
-
-        function editBirthday(id) {
-            alert('Édition: fonctionnalité à implémenter');
-        }
-
-        function deleteBirthday(id) {
-            if (confirm('Êtes-vous sûr?')) {
-                birthdays = birthdays.filter(b => b.id !== id);
+        function removeStarFromDept(deptId, starId) {
+            const dept = departments.find(d => d.id === deptId);
+            if (dept && confirm('Êtes-vous sûr?')) {
+                dept.stars = dept.stars.filter(s => s.id !== starId);
                 render();
             }
         }
@@ -496,10 +533,6 @@
                 location: location || ''
             });
             render();
-        }
-
-        function editEvent(id) {
-            alert('Édition: fonctionnalité à implémenter');
         }
 
         function deleteEvent(id) {
