@@ -10,6 +10,13 @@
     <div id="app"></div>
     <script>
         let currentUser = null;
+        let activeTab = 'dashboard';
+        let sidebarOpen = false;
+        let expandedDepts = {};
+        let expandedSundays = {};
+        let selectedMonth = 7;
+        let selectedYear = 2026;
+
         const departments = [
             {id: 'accueil', name: 'Accueil', icon: '🚪'},
             {id: 'louange', name: 'Louange', icon: '🎵'},
@@ -20,14 +27,38 @@
             {id: 'nettoyage', name: 'Nettoyage', icon: '🧹'},
             {id: 'logistique', name: 'Logistique', icon: '📦'}
         ];
-        
-        const stars = [
-            {id: 1, name: 'Elvis Jean', email: 'elvis@icc.com', phone: '0612345678', departments: ['accueil', 'louange']},
-            {id: 2, name: 'Béni Koffi', email: 'beni@icc.com', phone: '0623456789', departments: ['enfants', 'jeunesse']},
-            {id: 3, name: 'Déborah Sall', email: 'deborah@icc.com', phone: '0634567890', departments: ['accueil', 'intercession']},
-            {id: 4, name: 'Jemima Diallo', email: 'jemima@icc.com', phone: '0645678901', departments: ['accueil']},
-            {id: 5, name: 'Ange Nkwenchia', email: 'ange@icc.com', phone: '0656789012', departments: ['louange', 'streaming']}
+
+        let stars = [
+            {id: 1, name: 'Elvis Jean', email: 'elvis@icc.com', phone: '0612345678', birthDate: '1985-03-15', departments: ['accueil', 'louange']},
+            {id: 2, name: 'Béni Koffi', email: 'beni@icc.com', phone: '0623456789', birthDate: '1990-07-22', departments: ['enfants', 'jeunesse']},
+            {id: 3, name: 'Déborah Sall', email: 'deborah@icc.com', phone: '0634567890', birthDate: '1988-05-10', departments: ['accueil', 'intercession']},
+            {id: 4, name: 'Jemima Diallo', email: 'jemima@icc.com', phone: '0645678901', birthDate: '1992-08-20', departments: ['accueil']},
+            {id: 5, name: 'Ange Nkwenchia', email: 'ange@icc.com', phone: '0656789012', birthDate: '1987-06-30', departments: ['louange', 'streaming']}
         ];
+
+        let birthdays = [
+            {id: 1, name: 'Elvis Jean', date: '1985-03-15'},
+            {id: 2, name: 'Béni Koffi', date: '1990-07-22'},
+            {id: 3, name: 'Déborah Sall', date: '1988-05-10'},
+            {id: 4, name: 'Jemima Diallo', date: '1992-08-20'},
+            {id: 5, name: 'Ange Nkwenchia', date: '1987-06-30'}
+        ];
+
+        let events = [
+            {id: 1, title: 'Culte Dimanche', date: '2026-07-05', startTime: '10:00', type: 'culte', location: 'Église ICC'}
+        ];
+
+        let availability = {};
+
+        const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+        function render() {
+            if (!currentUser) {
+                renderLogin();
+            } else {
+                renderDashboard();
+            }
+        }
 
         function renderLogin() {
             document.getElementById('app').innerHTML = `
@@ -58,80 +89,427 @@
             const password = document.getElementById('password').value;
             if (email === 'admin@icc.com' && password === 'admin123') {
                 currentUser = {name: 'Admin', email: email};
-                renderDashboard();
+                activeTab = 'dashboard';
+                render();
             } else {
                 alert('Identifiants incorrects!');
             }
         }
 
-        function renderDashboard() {
-            document.getElementById('app').innerHTML = `
-                <div class="min-h-screen bg-white flex">
-                    <div class="w-64 h-screen bg-white border-r border-gray-200 p-8 overflow-y-auto">
-                        <h2 class="text-lg font-light tracking-tight text-black">Plateforme</h2>
-                        <p class="text-xs font-light text-gray-500 mt-3">${currentUser.name}</p>
-                        <nav class="mt-8 space-y-2">
-                            <button onclick="switchTab('dashboard')" class="w-full text-left px-4 py-2 text-sm font-light text-gray-700 hover:text-black">Tableau de bord</button>
-                            <button onclick="switchTab('departments')" class="w-full text-left px-4 py-2 text-sm font-light text-gray-700 hover:text-black">Départements</button>
-                            <button onclick="switchTab('serviteurs')" class="w-full text-left px-4 py-2 text-sm font-light text-gray-700 hover:text-black">Serviteurs</button>
-                        </nav>
-                        <button onclick="handleLogout()" class="mt-8 w-full px-4 py-2 text-sm font-light text-gray-700 border border-gray-200 hover:bg-gray-50">Déconnexion</button>
-                    </div>
-                    <div class="flex-1 p-12">
-                        <div id="content"></div>
-                    </div>
-                </div>
-            `;
-            renderTab('dashboard');
+        function handleLogout() {
+            currentUser = null;
+            activeTab = 'dashboard';
+            render();
         }
 
         function switchTab(tab) {
-            renderTab(tab);
+            activeTab = tab;
+            sidebarOpen = false;
+            render();
         }
 
-        function renderTab(tab) {
+        function getSundays(month, year) {
+            const sundays = [];
+            const date = new Date(year, month - 1, 1);
+            while (date.getDay() !== 0) date.setDate(date.getDate() + 1);
+            while (date.getMonth() === month - 1) {
+                sundays.push(new Date(date));
+                date.setDate(date.getDate() + 7);
+            }
+            return sundays;
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+        }
+
+        function toggleAvailability(starId, dateStr) {
+            const key = `${starId}_${dateStr}`;
+            availability[key] = !availability[key];
+            render();
+        }
+
+        function isAvailable(starId, dateStr) {
+            return availability[`${starId}_${dateStr}`] || false;
+        }
+
+        function getStarsByDept(deptId) {
+            return stars.filter(s => s.departments.includes(deptId));
+        }
+
+        function getServicesForSunday(sunday) {
+            const dateStr = sunday.toISOString().split('T')[0];
+            const result = {};
+            departments.forEach(dept => {
+                result[dept.id] = {
+                    name: dept.name,
+                    icon: dept.icon,
+                    stars: stars.filter(star => {
+                        const isInDept = star.departments.includes(dept.id);
+                        const isAvail = isAvailable(star.id, dateStr);
+                        return isInDept && isAvail;
+                    })
+                };
+            });
+            return result;
+        }
+
+        function countTotalServers(sunday) {
+            const services = getServicesForSunday(sunday);
+            return Object.values(services).reduce((acc, dept) => acc + dept.stars.length, 0);
+        }
+
+        function renderDashboard() {
+            const sundays = getSundays(selectedMonth, selectedYear);
             let content = '';
-            if (tab === 'dashboard') {
+
+            if (activeTab === 'dashboard') {
                 content = `
-                    <h1 class="text-4xl font-light text-black mb-8">Tableau de bord</h1>
-                    <div class="grid grid-cols-4 gap-8">
-                        <div><p class="text-sm font-light text-gray-500">Serviteurs</p><p class="text-3xl font-light text-black">${stars.length}</p></div>
-                        <div><p class="text-sm font-light text-gray-500">Départements</p><p class="text-3xl font-light text-black">${departments.length}</p></div>
-                    </div>
-                `;
-            } else if (tab === 'departments') {
-                content = `
-                    <h1 class="text-4xl font-light text-black mb-8">Départements</h1>
-                    <div class="space-y-3">
-                        ${departments.map(d => `
-                            <div class="border border-gray-200 p-6">
-                                <h3 class="text-sm font-medium text-black">${d.icon} ${d.name}</h3>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } else if (tab === 'serviteurs') {
-                content = `
-                    <h1 class="text-4xl font-light text-black mb-8">Serviteurs</h1>
-                    <div class="space-y-3">
-                        ${stars.map(s => `
-                            <div class="border border-gray-200 p-6">
-                                <h3 class="text-sm font-medium text-black">${s.name}</h3>
-                                <p class="text-xs font-light text-gray-500 mt-2">${s.email}</p>
-                            </div>
-                        `).join('')}
+                    <div class="space-y-12">
+                        <div class="space-y-2">
+                            <h1 class="text-4xl font-light tracking-tight text-black">Tableau de bord</h1>
+                            <p class="text-sm font-light text-gray-500">Vue d'ensemble</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                            <div><p class="text-sm font-light text-gray-500">Serviteurs</p><p class="text-3xl font-light text-black">${stars.length}</p></div>
+                            <div><p class="text-sm font-light text-gray-500">Départements</p><p class="text-3xl font-light text-black">${departments.length}</p></div>
+                            <div><p class="text-sm font-light text-gray-500">Anniversaires</p><p class="text-3xl font-light text-black">${birthdays.length}</p></div>
+                            <div><p class="text-sm font-light text-gray-500">Événements</p><p class="text-3xl font-light text-black">${events.length}</p></div>
+                        </div>
                     </div>
                 `;
             }
-            document.getElementById('content').innerHTML = content;
+
+            else if (activeTab === 'recap') {
+                content = `
+                    <div class="space-y-8">
+                        <div class="flex justify-between items-center">
+                            <h1 class="text-4xl font-light text-black">Services dimanche</h1>
+                            <div class="flex gap-4">
+                                <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100">←</button>
+                                <span class="text-sm font-light text-gray-700 w-32 text-center">${monthNames[selectedMonth - 1]}</span>
+                                <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100">→</button>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            ${sundays.map(sunday => {
+                                const dateStr = sunday.toISOString().split('T')[0];
+                                const isExpanded = expandedSundays[dateStr];
+                                const services = getServicesForSunday(sunday);
+                                const totalServers = countTotalServers(sunday);
+                                const deptsCovered = Object.values(services).filter(d => d.stars.length > 0).length;
+                                return `
+                                    <div class="border border-gray-200">
+                                        <button onclick="toggleSundayExpand('${dateStr}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center">
+                                            <div class="text-left">
+                                                <h2 class="text-sm font-medium text-black">${formatDate(sunday)}</h2>
+                                                <p class="text-xs font-light text-gray-500 mt-2">${totalServers} serviteur(s) • ${deptsCovered}/${departments.length} départements</p>
+                                            </div>
+                                            <span>${isExpanded ? '▲' : '▼'}</span>
+                                        </button>
+                                        ${isExpanded ? `
+                                            <div class="border-t border-gray-200 p-6 bg-gray-50">
+                                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                    ${departments.map(dept => {
+                                                        const deptServices = services[dept.id];
+                                                        return `
+                                                            <div class="space-y-2">
+                                                                <h3 class="text-sm font-medium text-black">${dept.icon} ${dept.name}</h3>
+                                                                <p class="text-xs font-light text-gray-500">${deptServices.stars.length} serviteur(s)</p>
+                                                                ${deptServices.stars.length === 0 ? '<p class="text-xs text-gray-400">Aucun</p>' : deptServices.stars.map(s => `<p class="text-xs text-gray-700">${s.name}</p>`).join('')}
+                                                            </div>
+                                                        `;
+                                                    }).join('')}
+                                                </div>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            else if (activeTab === 'planning') {
+                content = `
+                    <div class="space-y-8">
+                        <h1 class="text-4xl font-light text-black">Planning</h1>
+                        <div class="flex gap-4">
+                            <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100">←</button>
+                            <span class="text-sm font-light text-gray-700 w-32 text-center">${monthNames[selectedMonth - 1]}</span>
+                            <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100">→</button>
+                        </div>
+                        <div class="space-y-6">
+                            ${departments.map(dept => {
+                                const deptStars = getStarsByDept(dept.id);
+                                const isExpanded = expandedDepts[dept.id];
+                                return `
+                                    <div class="border border-gray-200">
+                                        <button onclick="toggleDeptExpand('${dept.id}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center">
+                                            <div>
+                                                <h2 class="text-sm font-medium text-black">${dept.icon} ${dept.name}</h2>
+                                                <p class="text-xs font-light text-gray-500 mt-1">${deptStars.length} serviteur(s)</p>
+                                            </div>
+                                            <span>${isExpanded ? '▲' : '▼'}</span>
+                                        </button>
+                                        ${isExpanded ? `
+                                            <div class="border-t border-gray-200 p-6 bg-gray-50 space-y-6">
+                                                ${deptStars.map(star => `
+                                                    <div>
+                                                        <h3 class="text-sm font-medium text-black mb-3">${star.name}</h3>
+                                                        <div class="grid grid-cols-4 gap-2">
+                                                            ${sundays.map(sunday => {
+                                                                const dateStr = sunday.toISOString().split('T')[0];
+                                                                const avail = isAvailable(star.id, dateStr);
+                                                                return `
+                                                                    <button onclick="toggleAvailability(${star.id}, '${dateStr}')" class="p-2 border text-xs font-light transition-colors ${avail ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}">
+                                                                        ${sunday.getDate()}
+                                                                    </button>
+                                                                `;
+                                                            }).join('')}
+                                                        </div>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            else if (activeTab === 'stars') {
+                content = `
+                    <div class="space-y-8">
+                        <div class="flex justify-between">
+                            <h1 class="text-4xl font-light text-black">Serviteurs</h1>
+                            <button onclick="addStar()" class="px-6 py-2 bg-red-600 text-white text-sm font-medium hover:bg-red-700">+ Ajouter</button>
+                        </div>
+                        <div class="space-y-3">
+                            ${stars.map(star => `
+                                <div class="border border-gray-200 p-6 hover:bg-gray-50">
+                                    <h3 class="text-sm font-medium text-black">${star.name}</h3>
+                                    <p class="text-xs font-light text-gray-500 mt-1">${star.email}</p>
+                                    <div class="flex gap-2 mt-3">
+                                        ${star.departments.map(d => {
+                                            const dept = departments.find(dp => dp.id === d);
+                                            return `<span class="text-xs bg-red-50 text-red-700 px-2 py-1">${dept.icon}</span>`;
+                                        }).join('')}
+                                    </div>
+                                    <div class="flex gap-2 mt-3">
+                                        <button onclick="editStar(${star.id})" class="text-gray-400 hover:text-black">✏️</button>
+                                        <button onclick="deleteStar(${star.id})" class="text-gray-400 hover:text-red-600">🗑️</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            else if (activeTab === 'birthdays') {
+                content = `
+                    <div class="space-y-8">
+                        <div class="flex justify-between">
+                            <h1 class="text-4xl font-light text-black">Anniversaires</h1>
+                            <button onclick="addBirthday()" class="px-6 py-2 bg-red-600 text-white text-sm font-medium hover:bg-red-700">+ Ajouter</button>
+                        </div>
+                        <div class="space-y-3">
+                            ${birthdays.map(b => `
+                                <div class="border border-gray-200 p-6 hover:bg-gray-50">
+                                    <h3 class="text-sm font-medium text-black">${b.name}</h3>
+                                    <p class="text-xs font-light text-gray-500 mt-1">${new Date(b.date).toLocaleDateString('fr-FR')}</p>
+                                    <div class="flex gap-2 mt-3">
+                                        <button onclick="editBirthday(${b.id})" class="text-gray-400 hover:text-black">✏️</button>
+                                        <button onclick="deleteBirthday(${b.id})" class="text-gray-400 hover:text-red-600">🗑️</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            else if (activeTab === 'events') {
+                content = `
+                    <div class="space-y-8">
+                        <div class="flex justify-between">
+                            <h1 class="text-4xl font-light text-black">Événements</h1>
+                            <button onclick="addEvent()" class="px-6 py-2 bg-red-600 text-white text-sm font-medium hover:bg-red-700">+ Ajouter</button>
+                        </div>
+                        <div class="space-y-3">
+                            ${events.map(e => `
+                                <div class="border border-gray-200 p-6 hover:bg-gray-50">
+                                    <h3 class="text-sm font-medium text-black">${e.title}</h3>
+                                    <p class="text-xs font-light text-gray-500 mt-1">${new Date(e.date).toLocaleDateString('fr-FR')} ${e.startTime ? 'à ' + e.startTime : ''}</p>
+                                    ${e.location ? `<p class="text-xs font-light text-gray-500">📍 ${e.location}</p>` : ''}
+                                    <div class="flex gap-2 mt-3">
+                                        <button onclick="editEvent(${e.id})" class="text-gray-400 hover:text-black">✏️</button>
+                                        <button onclick="deleteEvent(${e.id})" class="text-gray-400 hover:text-red-600">🗑️</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            else if (activeTab === 'departments') {
+                content = `
+                    <div class="space-y-8">
+                        <div class="flex justify-between">
+                            <h1 class="text-4xl font-light text-black">Départements</h1>
+                        </div>
+                        <div class="space-y-3">
+                            ${departments.map(d => {
+                                const deptStars = stars.filter(s => s.departments.includes(d.id));
+                                return `
+                                    <div class="border border-gray-200 p-6 hover:bg-gray-50">
+                                        <h3 class="text-sm font-medium text-black">${d.icon} ${d.name}</h3>
+                                        <p class="text-xs font-light text-gray-500 mt-1">${deptStars.length} serviteur(s)</p>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('app').innerHTML = `
+                <div class="min-h-screen bg-white flex">
+                    <div class="${sidebarOpen ? '' : 'hidden'} md:block w-64 h-screen bg-white border-r border-gray-200 p-8 overflow-y-auto fixed md:relative z-40">
+                        <h2 class="text-lg font-light tracking-tight text-black">Plateforme de gestion</h2>
+                        <p class="text-xs font-light text-gray-500 mt-3">${currentUser.name}</p>
+                        <nav class="mt-8 space-y-1">
+                            <button onclick="switchTab('dashboard')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'dashboard' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Tableau de bord</button>
+                            <button onclick="switchTab('recap')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'recap' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Récapitulatif</button>
+                            <button onclick="switchTab('planning')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'planning' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Planning</button>
+                            <button onclick="switchTab('stars')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'stars' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Serviteurs</button>
+                            <button onclick="switchTab('birthdays')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'birthdays' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Anniversaires</button>
+                            <button onclick="switchTab('events')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'events' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Événements</button>
+                            <button onclick="switchTab('departments')" class="w-full text-left px-4 py-2 text-sm font-light ${activeTab === 'departments' ? 'text-red-600 border-l-2 border-red-600 bg-red-50' : 'text-gray-700 hover:text-black'}">Départements</button>
+                        </nav>
+                        <button onclick="handleLogout()" class="mt-8 w-full px-4 py-2 text-sm font-light text-gray-700 border border-gray-200 hover:bg-gray-50">Déconnexion</button>
+                    </div>
+                    <div class="flex-1 overflow-auto">
+                        <div class="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+                            <h2 class="font-light text-black">Plateforme</h2>
+                            <button onclick="toggleSidebar()" class="p-2">☰</button>
+                        </div>
+                        <div class="p-8 md:p-12">
+                            ${content}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
-        function handleLogout() {
-            currentUser = null;
-            renderLogin();
+        function toggleSidebar() {
+            sidebarOpen = !sidebarOpen;
+            render();
         }
 
-        renderLogin();
+        function toggleDeptExpand(deptId) {
+            expandedDepts[deptId] = !expandedDepts[deptId];
+            render();
+        }
+
+        function toggleSundayExpand(dateStr) {
+            expandedSundays[dateStr] = !expandedSundays[dateStr];
+            render();
+        }
+
+        function setPrevMonth() {
+            selectedMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+            if (selectedMonth === 12) selectedYear--;
+            render();
+        }
+
+        function setNextMonth() {
+            selectedMonth = selectedMonth === 12 ? 1 : selectedMonth + 1;
+            if (selectedMonth === 1) selectedYear++;
+            render();
+        }
+
+        function addStar() {
+            const name = prompt('Nom:');
+            if (!name) return;
+            const email = prompt('Email:');
+            const phone = prompt('Téléphone:');
+            const birthDate = prompt('Date de naissance (YYYY-MM-DD):');
+            stars.push({
+                id: Date.now(),
+                name: name,
+                email: email || '',
+                phone: phone || '',
+                birthDate: birthDate || '',
+                departments: []
+            });
+            render();
+        }
+
+        function editStar(id) {
+            alert('Édition: fonctionnalité à implémenter');
+        }
+
+        function deleteStar(id) {
+            if (confirm('Êtes-vous sûr?')) {
+                stars = stars.filter(s => s.id !== id);
+                render();
+            }
+        }
+
+        function addBirthday() {
+            const name = prompt('Nom:');
+            if (!name) return;
+            const date = prompt('Date (YYYY-MM-DD):');
+            birthdays.push({id: Date.now(), name: name, date: date || ''});
+            render();
+        }
+
+        function editBirthday(id) {
+            alert('Édition: fonctionnalité à implémenter');
+        }
+
+        function deleteBirthday(id) {
+            if (confirm('Êtes-vous sûr?')) {
+                birthdays = birthdays.filter(b => b.id !== id);
+                render();
+            }
+        }
+
+        function addEvent() {
+            const title = prompt('Titre:');
+            if (!title) return;
+            const date = prompt('Date (YYYY-MM-DD):');
+            const startTime = prompt('Heure (HH:MM):');
+            const location = prompt('Lieu:');
+            events.push({
+                id: Date.now(),
+                title: title,
+                date: date || '',
+                startTime: startTime || '',
+                type: 'culte',
+                location: location || ''
+            });
+            render();
+        }
+
+        function editEvent(id) {
+            alert('Édition: fonctionnalité à implémenter');
+        }
+
+        function deleteEvent(id) {
+            if (confirm('Êtes-vous sûr?')) {
+                events = events.filter(e => e.id !== id);
+                render();
+            }
+        }
+
+        render();
     </script>
 </body>
 </html>
