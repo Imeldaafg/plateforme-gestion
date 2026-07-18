@@ -18,30 +18,7 @@
         let selectedMonth = 7;
         let selectedYear = 2026;
 
-        let departments = [
-            {id: 'accueil', name: 'Accueil', stars: [
-                {id: 1, name: 'Elvis Jean', email: 'elvis@icc.com', phone: '0612345678', birthDate: '1985-03-15'},
-                {id: 3, name: 'Déborah Sall', email: 'deborah@icc.com', phone: '0634567890', birthDate: '1988-05-10'}
-            ]},
-            {id: 'louange', name: 'Louange', stars: [
-                {id: 1, name: 'Elvis Jean', email: 'elvis@icc.com', phone: '0612345678', birthDate: '1985-03-15'},
-                {id: 5, name: 'Ange Nkwenchia', email: 'ange@icc.com', phone: '0656789012', birthDate: '1987-06-30'}
-            ]},
-            {id: 'enfants', name: 'Enfants', stars: [
-                {id: 2, name: 'Béni Koffi', email: 'beni@icc.com', phone: '0623456789', birthDate: '1990-07-22'}
-            ]},
-            {id: 'jeunesse', name: 'Jeunesse', stars: [
-                {id: 2, name: 'Béni Koffi', email: 'beni@icc.com', phone: '0623456789', birthDate: '1990-07-22'}
-            ]},
-            {id: 'intercession', name: 'Intercession', stars: [
-                {id: 3, name: 'Déborah Sall', email: 'deborah@icc.com', phone: '0634567890', birthDate: '1988-05-10'}
-            ]},
-            {id: 'streaming', name: 'Streaming', stars: [
-                {id: 5, name: 'Ange Nkwenchia', email: 'ange@icc.com', phone: '0656789012', birthDate: '1987-06-30'}
-            ]},
-            {id: 'nettoyage', name: 'Nettoyage', stars: []},
-            {id: 'logistique', name: 'Logistique', stars: []}
-        ];
+        let departments = [];
 
         let events = [
             {id: 1, title: 'Culte Dimanche', date: '2026-07-05', startTime: '10:00', type: 'culte', location: 'Église ICC'}
@@ -291,6 +268,7 @@
                                 <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100 rounded">→</button>
                             </div>
                         </div>
+                        ${departments.length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Veuillez d\'abord ajouter des départements</p></div>' : `
                         <div class="space-y-4">
                             ${sundays.map(sunday => {
                                 const dateStr = sunday.toISOString().split('T')[0];
@@ -329,6 +307,7 @@
                                 `;
                             }).join('')}
                         </div>
+                        `}
                     </div>
                 `;
             }
@@ -344,6 +323,7 @@
                                 <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100 rounded">→</button>
                             </div>
                         </div>
+                        ${departments.length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Veuillez d\'abord ajouter des départements</p></div>' : `
                         <div class="space-y-4">
                             ${departments.map(dept => {
                                 const isExpanded = expandedDepts[dept.id];
@@ -380,6 +360,7 @@
                                 `;
                             }).join('')}
                         </div>
+                        `}
                     </div>
                 `;
             }
@@ -391,44 +372,49 @@
                             <h1 class="text-4xl font-bold text-black">Départements</h1>
                             <button onclick="addDepartment()" class="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow transition-colors">+ Ajouter</button>
                         </div>
-                        <div class="grid grid-cols-1 gap-4">
+                        ${departments.length === 0 ? `
+                            <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-12 text-center border-2 border-dashed border-red-200">
+                                <h2 class="text-2xl font-bold text-red-600 mb-2">Aucun département</h2>
+                                <p class="text-gray-600 mb-6">Commencez par ajouter votre premier département</p>
+                                <button onclick="addDepartment()" class="px-8 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors inline-block">+ Créer le premier département</button>
+                            </div>
+                        ` : `
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             ${departments.map(dept => {
-                                const isExpanded = expandedDepts[dept.id];
                                 return `
-                                    <div class="bg-white rounded-lg shadow overflow-hidden">
-                                        <button onclick="toggleDeptExpand('${dept.id}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
-                                            <div class="flex-1">
-                                                <h2 class="text-xl font-bold text-black">${dept.name}</h2>
-                                                <p class="text-sm text-gray-600 mt-1">${dept.stars.length} star(s) ★</p>
+                                    <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+                                        <div class="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
+                                            <div class="flex justify-between items-start">
+                                                <h2 class="text-xl font-bold text-white">${dept.name}</h2>
+                                                <button onclick="deleteDepartment('${dept.id}')" class="text-white hover:bg-red-700 rounded-full w-8 h-8 flex items-center justify-center">✕</button>
                                             </div>
-                                            <div class="flex items-center gap-3 ml-4 flex-shrink-0">
-                                                <button onclick="event.stopPropagation(); deleteDepartment('${dept.id}')" class="text-red-600 hover:text-red-700 font-bold text-xl">✕</button>
-                                                <span class="text-red-600 text-xl">${isExpanded ? '▲' : '▼'}</span>
+                                        </div>
+                                        <div class="p-6 space-y-4">
+                                            <div class="bg-red-50 rounded-lg p-4">
+                                                <p class="text-sm text-gray-600">Stars</p>
+                                                <p class="text-3xl font-bold text-red-600">${dept.stars.length}</p>
                                             </div>
-                                        </button>
-                                        ${isExpanded ? `
-                                            <div class="border-t border-gray-200 p-6 bg-gray-50 space-y-4">
-                                                <button onclick="addStarToDept('${dept.id}')" class="w-full py-3 border-2 border-dashed border-red-300 text-red-600 font-medium rounded-lg hover:bg-red-50 transition-colors">+ Ajouter star ★</button>
-                                                <div class="space-y-3">
+                                            <button onclick="addStarToDept('${dept.id}')" class="w-full py-3 border-2 border-dashed border-red-300 text-red-600 font-bold rounded-lg hover:bg-red-50 transition-colors">+ Ajouter star ★</button>
+                                            ${dept.stars.length > 0 ? `
+                                                <div class="space-y-2 max-h-48 overflow-y-auto">
                                                     ${dept.stars.map(star => `
-                                                        <div class="bg-white p-4 rounded-lg border border-gray-200">
-                                                            <div class="flex justify-between items-start gap-4">
-                                                                <div class="flex-1">
-                                                                    <h3 class="font-bold text-black">${star.name}</h3>
-                                                                    <p class="text-sm text-gray-600 mt-1">${star.email}</p>
-                                                                    <p class="text-sm text-gray-600">${star.phone}</p>
-                                                                </div>
-                                                                <button onclick="removeStarFromDept('${dept.id}', ${star.id})" class="text-red-600 hover:text-red-700 font-bold text-xl flex-shrink-0">✕</button>
+                                                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 flex justify-between items-start gap-2">
+                                                            <div class="flex-1 min-w-0">
+                                                                <p class="font-medium text-black text-sm">${star.name}</p>
+                                                                <p class="text-xs text-gray-600 truncate">${star.email}</p>
+                                                                <p class="text-xs text-gray-600">${star.phone}</p>
                                                             </div>
+                                                            <button onclick="removeStarFromDept('${dept.id}', ${star.id})" class="text-red-600 hover:text-red-700 font-bold flex-shrink-0">✕</button>
                                                         </div>
                                                     `).join('')}
                                                 </div>
-                                            </div>
-                                        ` : ''}
+                                            ` : ''}
+                                        </div>
                                     </div>
                                 `;
                             }).join('')}
                         </div>
+                        `}
                     </div>
                 `;
             }
@@ -439,6 +425,7 @@
                     <div class="space-y-8">
                         <h1 class="text-4xl font-bold text-black">Anniversaires</h1>
                         <p class="text-gray-600">Les anniversaires sont générés automatiquement à partir des dates de naissance des stars ★.</p>
+                        ${Object.keys(birthdaysByMonth).length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Aucun anniversaire enregistré</p></div>' : `
                         <div class="space-y-4">
                             ${Object.entries(birthdaysByMonth).map(([monthIndex, birthdays]) => {
                                 const isExpanded = expandedBirthdayMonths[monthIndex];
@@ -470,6 +457,7 @@
                                 `;
                             }).join('')}
                         </div>
+                        `}
                     </div>
                 `;
             }
@@ -479,6 +467,7 @@
                     <div class="space-y-8">
                         <h1 class="text-4xl font-bold text-black">Entretien</h1>
                         <p class="text-gray-600">Chaque département assure l'entretien à tour de rôle, une semaine par mois (août-décembre 2026).</p>
+                        ${departments.length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Veuillez d\'abord ajouter des départements</p></div>' : `
                         <div class="grid grid-cols-1 gap-6">
                             ${Object.entries(maintenanceSchedule).map(([key, schedule]) => {
                                 const [year, month] = key.split('-');
@@ -504,6 +493,7 @@
                                 `;
                             }).join('')}
                         </div>
+                        `}
                     </div>
                 `;
             }
@@ -515,8 +505,9 @@
                             <h1 class="text-4xl font-bold text-black">Événements</h1>
                             <button onclick="addEvent()" class="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow transition-colors">+ Ajouter</button>
                         </div>
+                        ${events.length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Aucun événement</p></div>' : `
                         <div class="space-y-4">
-                            ${events.length === 0 ? '<p class="text-gray-600">Aucun événement</p>' : events.map(e => `
+                            ${events.map(e => `
                                 <div class="bg-white rounded-lg shadow p-6 border-l-4 border-red-600">
                                     <div class="flex justify-between items-start gap-4">
                                         <div class="flex-1">
@@ -529,6 +520,7 @@
                                 </div>
                             `).join('')}
                         </div>
+                        `}
                     </div>
                 `;
             }
