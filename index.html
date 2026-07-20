@@ -27,7 +27,6 @@
 
         const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
-        // CHARGER LES DONNÉES LOCALES
         function loadData() {
             try {
                 const savedDepts = localStorage.getItem('departments');
@@ -48,7 +47,6 @@
             }
         }
 
-        // SAUVEGARDER LES DONNÉES LOCALES
         function saveData() {
             try {
                 localStorage.setItem('departments', JSON.stringify(departments));
@@ -111,6 +109,32 @@
             return Object.values(allStars);
         }
 
+        function getBirthdaysFromStars() {
+            const birthdays = [];
+            const stars = getAllStars();
+            stars.forEach(star => {
+                if (star.birthDate && !birthdays.some(b => b.id === star.id)) {
+                    birthdays.push({id: star.id, name: star.name, date: star.birthDate});
+                }
+            });
+            return birthdays.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateA.getMonth() - dateB.getMonth() || dateA.getDate() - dateB.getDate();
+            });
+        }
+
+        function getBirthdaysByMonth() {
+            const birthdays = getBirthdaysFromStars();
+            const grouped = {};
+            birthdays.forEach(b => {
+                const month = new Date(b.date).getMonth();
+                if (!grouped[month]) grouped[month] = [];
+                grouped[month].push(b);
+            });
+            return grouped;
+        }
+
         function getSundays(month, year) {
             const sundays = [];
             const date = new Date(year, month - 1, 1);
@@ -132,31 +156,30 @@
                 return;
             }
 
-            const messageBody = `Bonjour ${referentName},
+            const messageBody = `Bonjour ${referentName},\n\nC'est au tour de ${deptName} d'assurer l'entretien le:\n${formatDate(new Date(date))}\n\nMerci pour votre engagement!\n\nICC Lyon Sud`;
 
-C'est au tour de ${deptName} d'assurer l'entretien le:
-${formatDate(new Date(date))}
+            const mailgunDomain = 'sandbox47cf0aeb5c3643c495d3ce23e98df477.mailgun.org';
+            const mailgunApiKey = 'b7c834f4a6c6lfc94aee68fe9585c96a-994959c8-7ee14253';
 
-Merci pour votre engagement!
+            const auth = btoa('api:' + mailgunApiKey);
 
-ICC Lyon Sud`;
+            const formData = new URLSearchParams();
+            formData.append('from', `ICC Lyon Sud <noreply@${mailgunDomain}>`);
+            formData.append('to', referentEmail);
+            formData.append('subject', `Alerte entretien - ${deptName}`);
+            formData.append('text', messageBody);
 
-            fetch('https://api.web3forms.com/submit', {
+            fetch(`https://api.mailgun.net/v3/${mailgunDomain}/messages`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Authorization': 'Basic ' + auth,
+                    'Content-Type': 'application/x-www-form-urlencoded'
                 },
-                body: JSON.stringify({
-                    access_key: '1418623a-3792-4cc6-bd07-2edad84f09a6',
-                    to_email: referentEmail,
-                    from_name: 'ICC Lyon Sud',
-                    subject: `Alerte entretien - ${deptName}`,
-                    message: messageBody
-                })
+                body: formData
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
+                if (data.message && data.message.includes('Queued')) {
                     alert(`Email envoyé à ${referentEmail}! ✅`);
                 } else {
                     alert('Erreur lors de l\'envoi');
@@ -282,41 +305,105 @@ ICC Lyon Sud`;
                 `;
             }
 
-            else if (activeTab === 'maintenance') {
+            else if (activeTab === 'recap') {
                 content = `
                     <div class="space-y-8">
-                        <h1 class="text-4xl font-bold text-black">Entretien</h1>
-                        <p class="text-gray-600">Chaque département assure l'entretien à tour de rôle, une semaine par mois.</p>
+                        <div class="flex justify-between items-center gap-4">
+                            <h1 class="text-4xl font-bold text-black">Services dimanche</h1>
+                            <div class="flex gap-4 bg-white rounded-lg p-2 shadow">
+                                <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100 rounded">←</button>
+                                <span class="text-sm font-medium text-gray-700 w-40 text-center">${monthNames[selectedMonth - 1]} ${selectedYear}</span>
+                                <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100 rounded">→</button>
+                            </div>
+                        </div>
                         ${departments.length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Veuillez d\'abord ajouter des départements</p></div>' : `
-                        <div class="grid grid-cols-1 gap-6">
-                            ${Object.entries(maintenanceSchedule).map(([key, schedule]) => {
-                                const [year, month] = key.split('-');
-                                const monthIndex = parseInt(month) - 1;
+                        <div class="space-y-4">
+                            ${sundays.map(sunday => {
+                                const dateStr = sunday.toISOString().split('T')[0];
+                                const isExpanded = expandedSundays[dateStr];
+                                const services = getServicesForSunday(sunday);
+                                const totalServers = Object.values(services).reduce((acc, d) => acc + d.stars.length, 0);
+                                const deptsCovered = Object.values(services).filter(d => d.stars.length > 0).length;
                                 return `
-                                    <div class="bg-white rounded-lg shadow p-6">
-                                        <h2 class="text-2xl font-bold text-black mb-6">${monthNames[monthIndex]} ${year}</h2>
-                                        <div class="space-y-4">
-                                            ${schedule.map((item, idx) => {
-                                                const dept = item.dept;
-                                                const referent = dept.stars.find(s => s.isReferent);
-                                                return `
-                                                    <div class="flex items-start gap-4 pb-4 border-b last:border-b-0">
-                                                        <div class="w-16 h-16 bg-red-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
-                                                            <span class="text-lg font-bold text-red-600">${item.sunday.getDate()}</span>
-                                                            <span class="text-xs text-red-600">Semaine ${item.week}</span>
-                                                        </div>
-                                                        <div class="flex-1">
-                                                            <p class="text-sm text-gray-600">${formatDate(item.sunday)}</p>
-                                                            <p class="text-xl font-bold text-black mt-1">${dept.name}</p>
-                                                            ${referent ? `
-                                                                <p class="text-sm text-gray-700 mt-2">Référent: ${referent.name} (${referent.email})</p>
-                                                                <button onclick="sendMaintenanceAlert('${dept.name}', '${referent.email}', '${referent.name}', '${item.sunday.toISOString().split('T')[0]}')" class="mt-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded hover:bg-red-700">Envoyer alerte</button>
-                                                            ` : '<p class="text-sm text-gray-500 mt-2">Aucun référent assigné</p>'}
+                                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                                        <button onclick="toggleSundayExpand('${dateStr}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
+                                            <div class="text-left">
+                                                <h2 class="text-lg font-bold text-black">${formatDate(sunday)}</h2>
+                                                <p class="text-sm text-gray-600 mt-2">${totalServers} star(s) ★ • ${deptsCovered}/${departments.length} départements</p>
+                                            </div>
+                                            <span class="text-red-600">${isExpanded ? '▲' : '▼'}</span>
+                                        </button>
+                                        ${isExpanded ? `
+                                            <div class="border-t border-gray-200 p-6 bg-gray-50">
+                                                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                                    ${departments.map(dept => {
+                                                        const deptServices = services[dept.id];
+                                                        return `
+                                                            <div class="space-y-3">
+                                                                <h3 class="font-bold text-black text-sm">${dept.name}</h3>
+                                                                <div class="text-sm text-gray-600">${deptServices.stars.length} star(s)</div>
+                                                                <div class="space-y-1">
+                                                                    ${deptServices.stars.length === 0 ? '<p class="text-xs text-gray-400">Aucune star</p>' : deptServices.stars.map(s => `<p class="text-xs text-gray-700 bg-white p-2 rounded">${s.name}</p>`).join('')}
+                                                                </div>
+                                                            </div>
+                                                        `;
+                                                    }).join('')}
+                                                </div>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        `}
+                    </div>
+                `;
+            }
+
+            else if (activeTab === 'planning') {
+                content = `
+                    <div class="space-y-8">
+                        <div class="flex justify-between items-center gap-4">
+                            <h1 class="text-4xl font-bold text-black">Planning</h1>
+                            <div class="flex gap-4 bg-white rounded-lg p-2 shadow">
+                                <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100 rounded">←</button>
+                                <span class="text-sm font-medium text-gray-700 w-40 text-center">${monthNames[selectedMonth - 1]}</span>
+                                <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100 rounded">→</button>
+                            </div>
+                        </div>
+                        ${departments.length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Veuillez d\'abord ajouter des départements</p></div>' : `
+                        <div class="space-y-4">
+                            ${departments.map(dept => {
+                                const isExpanded = expandedDepts[dept.id];
+                                return `
+                                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                                        <button onclick="toggleDeptExpand('${dept.id}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
+                                            <div class="flex-1">
+                                                <h2 class="text-lg font-bold text-black">${dept.name}</h2>
+                                                <p class="text-sm text-gray-600 mt-1">${dept.stars ? dept.stars.length : 0} star(s) ★</p>
+                                            </div>
+                                            <span class="text-red-600 text-xl ml-4 flex-shrink-0">${isExpanded ? '▲' : '▼'}</span>
+                                        </button>
+                                        ${isExpanded ? `
+                                            <div class="border-t border-gray-200 p-6 bg-gray-50 space-y-6">
+                                                ${!dept.stars || dept.stars.length === 0 ? '<p class="text-gray-600">Aucune star</p>' : dept.stars.map(star => `
+                                                    <div>
+                                                        <h3 class="font-bold text-black mb-3">${star.name}</h3>
+                                                        <div class="grid grid-cols-4 gap-2">
+                                                            ${sundays.map(sunday => {
+                                                                const dateStr = sunday.toISOString().split('T')[0];
+                                                                const avail = availability[`${dept.id}_${star.id}_${dateStr}`] || false;
+                                                                return `
+                                                                    <button onclick="toggleAvailability('${dept.id}', ${star.id}, '${dateStr}')" class="p-3 border rounded text-xs font-medium transition-colors h-12 flex items-center justify-center ${avail ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:border-red-600'}">
+                                                                        ${sunday.getDate()}
+                                                                    </button>
+                                                                `;
+                                                            }).join('')}
                                                         </div>
                                                     </div>
-                                                `;
-                                            }).join('')}
-                                        </div>
+                                                `).join('')}
+                                            </div>
+                                        ` : ''}
                                     </div>
                                 `;
                             }).join('')}
@@ -383,21 +470,108 @@ ICC Lyon Sud`;
                 `;
             }
 
+            else if (activeTab === 'birthdays') {
+                const birthdaysByMonth = getBirthdaysByMonth();
+                content = `
+                    <div class="space-y-8">
+                        <h1 class="text-4xl font-bold text-black">Anniversaires</h1>
+                        <p class="text-gray-600">Les anniversaires sont générés automatiquement à partir des dates de naissance des stars ★.</p>
+                        ${Object.keys(birthdaysByMonth).length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Aucun anniversaire enregistré</p></div>' : `
+                        <div class="space-y-4">
+                            ${Object.entries(birthdaysByMonth).map(([monthIndex, birthdays]) => {
+                                const isExpanded = expandedBirthdayMonths[monthIndex];
+                                return `
+                                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                                        <button onclick="toggleBirthdayMonth(${monthIndex})" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
+                                            <div class="flex-1">
+                                                <h2 class="text-xl font-bold text-black">${monthNames[monthIndex]}</h2>
+                                                <p class="text-sm text-gray-600 mt-1">${birthdays.length} anniversaire(s)</p>
+                                            </div>
+                                            <span class="text-red-600 text-xl ml-4 flex-shrink-0">${isExpanded ? '▲' : '▼'}</span>
+                                        </button>
+                                        ${isExpanded ? `
+                                            <div class="border-t border-gray-200 p-6 bg-gray-50">
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    ${birthdays.map(b => {
+                                                        const date = new Date(b.date);
+                                                        return `
+                                                            <div class="bg-white rounded-lg p-4 border-l-4 border-red-600">
+                                                                <h3 class="text-lg font-bold text-black">${b.name}</h3>
+                                                                <p class="text-2xl font-bold text-red-600 mt-2">${date.getDate()} ${monthNames[date.getMonth()]}</p>
+                                                            </div>
+                                                        `;
+                                                    }).join('')}
+                                                </div>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        `}
+                    </div>
+                `;
+            }
+
+            else if (activeTab === 'maintenance') {
+                content = `
+                    <div class="space-y-8">
+                        <h1 class="text-4xl font-bold text-black">Entretien</h1>
+                        <p class="text-gray-600">Chaque département assure l'entretien à tour de rôle, une semaine par mois.</p>
+                        ${departments.length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Veuillez d\'abord ajouter des départements</p></div>' : `
+                        <div class="grid grid-cols-1 gap-6">
+                            ${Object.entries(maintenanceSchedule).map(([key, schedule]) => {
+                                const [year, month] = key.split('-');
+                                const monthIndex = parseInt(month) - 1;
+                                return `
+                                    <div class="bg-white rounded-lg shadow p-6">
+                                        <h2 class="text-2xl font-bold text-black mb-6">${monthNames[monthIndex]} ${year}</h2>
+                                        <div class="space-y-4">
+                                            ${schedule.map((item, idx) => {
+                                                const dept = item.dept;
+                                                const referent = dept.stars.find(s => s.isReferent);
+                                                return `
+                                                    <div class="flex items-start gap-4 pb-4 border-b last:border-b-0">
+                                                        <div class="w-16 h-16 bg-red-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                                                            <span class="text-lg font-bold text-red-600">${item.sunday.getDate()}</span>
+                                                            <span class="text-xs text-red-600">Semaine ${item.week}</span>
+                                                        </div>
+                                                        <div class="flex-1">
+                                                            <p class="text-sm text-gray-600">${formatDate(item.sunday)}</p>
+                                                            <p class="text-xl font-bold text-black mt-1">${dept.name}</p>
+                                                            ${referent ? `
+                                                                <p class="text-sm text-gray-700 mt-2">Référent: ${referent.name} (${referent.email})</p>
+                                                                <button onclick="sendMaintenanceAlert('${dept.name}', '${referent.email}', '${referent.name}', '${item.sunday.toISOString().split('T')[0]}')" class="mt-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded hover:bg-red-700">Envoyer alerte</button>
+                                                            ` : '<p class="text-sm text-gray-500 mt-2">Aucun référent assigné</p>'}
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        `}
+                    </div>
+                `;
+            }
+
             else if (activeTab === 'settings') {
                 content = `
                     <div class="space-y-8">
                         <h1 class="text-4xl font-bold text-black">Paramètres</h1>
                         <div class="bg-white rounded-lg shadow p-8 max-w-2xl space-y-6">
                             <div class="space-y-2">
-                                <label class="block text-sm font-medium text-black">Email de contact (pour les alertes)</label>
+                                <label class="block text-sm font-medium text-black">Email de contact</label>
                                 <input id="emailInput" type="email" value="${emailContact}" placeholder="votre@email.com" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:outline-none focus:ring-2 focus:ring-red-500" />
-                                <p class="text-xs text-gray-600">Les alertes d'entretien seront envoyées depuis cet email</p>
+                                <p class="text-xs text-gray-600">Cet email est utilisé pour confirmer l'envoi des alertes</p>
                             </div>
                             <button onclick="saveSettings()" class="w-full px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors">Sauvegarder</button>
                         </div>
                         <div class="bg-green-50 border border-green-200 rounded-lg p-6">
-                            <h3 class="font-bold text-green-900 mb-2">✅ Web3Forms configuré!</h3>
-                            <p class="text-sm text-green-800">Les emails d'alerte d'entretien seront envoyés automatiquement. Aucune configuration supplémentaire nécessaire!</p>
+                            <h3 class="font-bold text-green-900 mb-2">✅ Mailgun configuré!</h3>
+                            <p class="text-sm text-green-800">Les emails d'alerte d'entretien seront envoyés directement aux référents des départements.</p>
                         </div>
                     </div>
                 `;
@@ -440,7 +614,10 @@ ICC Lyon Sud`;
                         </div>
                         <nav class="space-y-2">
                             <button onclick="switchTab('dashboard')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Tableau de bord</button>
+                            <button onclick="switchTab('recap')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'recap' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Récapitulatif</button>
+                            <button onclick="switchTab('planning')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'planning' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Planning</button>
                             <button onclick="switchTab('departments')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'departments' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Départements</button>
+                            <button onclick="switchTab('birthdays')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'birthdays' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Anniversaires</button>
                             <button onclick="switchTab('maintenance')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'maintenance' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Entretien</button>
                             <button onclick="switchTab('events')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'events' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Événements</button>
                             <button onclick="switchTab('settings')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Paramètres</button>
@@ -462,6 +639,40 @@ ICC Lyon Sud`;
 
         function toggleSidebar() {
             sidebarOpen = !sidebarOpen;
+            render();
+        }
+
+        function toggleDeptExpand(deptId) {
+            expandedDepts[deptId] = !expandedDepts[deptId];
+            render();
+        }
+
+        function toggleSundayExpand(dateStr) {
+            expandedSundays[dateStr] = !expandedSundays[dateStr];
+            render();
+        }
+
+        function toggleBirthdayMonth(monthIndex) {
+            expandedBirthdayMonths[monthIndex] = !expandedBirthdayMonths[monthIndex];
+            render();
+        }
+
+        function setPrevMonth() {
+            selectedMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+            if (selectedMonth === 12) selectedYear--;
+            render();
+        }
+
+        function setNextMonth() {
+            selectedMonth = selectedMonth === 12 ? 1 : selectedMonth + 1;
+            if (selectedMonth === 1) selectedYear++;
+            render();
+        }
+
+        function toggleAvailability(deptId, starId, dateStr) {
+            const key = `${deptId}_${starId}_${dateStr}`;
+            availability[key] = !availability[key];
+            saveData();
             render();
         }
 
@@ -575,7 +786,6 @@ ICC Lyon Sud`;
             render();
         }
 
-        // Au démarrage
         loadData();
         render();
     </script>
