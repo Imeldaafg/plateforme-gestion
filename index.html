@@ -5,10 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Plateforme de gestion ICC</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-50">
     <div id="app"></div>
     <script>
+        const SUPABASE_URL = 'https://kmoqkcpndqegsiioezgj.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_-fZwKreNBuJjf03tkJfjRg_IsepO0gp';
+        
+        const { createClient } = window.supabase;
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
         let currentUser = null;
         let activeTab = 'dashboard';
         let sidebarOpen = false;
@@ -26,32 +33,76 @@
 
         const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
-        function loadData() {
+        async function initializeData() {
             try {
-                const savedDepts = localStorage.getItem('departments');
-                const savedEvents = localStorage.getItem('events');
-                const savedAvailability = localStorage.getItem('availability');
-                const savedPassword = localStorage.getItem('adminPassword');
+                const { data: deptsData } = await supabase.from('departments').select('*');
+                const { data: eventsData } = await supabase.from('events').select('*');
+                const { data: availData } = await supabase.from('availability').select('*');
                 
-                if (savedDepts) departments = JSON.parse(savedDepts);
-                if (savedEvents) events = JSON.parse(savedEvents);
-                if (savedAvailability) availability = JSON.parse(savedAvailability);
-                if (savedPassword) adminPassword = savedPassword;
+                if (deptsData) departments = deptsData;
+                if (eventsData) events = eventsData;
+                if (availData) {
+                    availability = {};
+                    availData.forEach(item => {
+                        availability[item.key] = item.available;
+                    });
+                }
                 
                 generateMaintenanceSchedule();
+                setupRealtimeListeners();
+                render();
             } catch (e) {
-                console.error('Erreur chargement:', e);
+                loadLocalData();
+                render();
             }
         }
 
-        function saveData() {
-            try {
+        function loadLocalData() {
+            const savedDepts = localStorage.getItem('departments');
+            const savedEvents = localStorage.getItem('events');
+            const savedAvailability = localStorage.getItem('availability');
+            
+            if (savedDepts) departments = JSON.parse(savedDepts);
+            if (savedEvents) events = JSON.parse(savedEvents);
+            if (savedAvailability) availability = JSON.parse(savedAvailability);
+            
+            generateMaintenanceSchedule();
+        }
+
+        function setupRealtimeListeners() {
+            supabase.channel('departments_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, () => loadDepartments()).subscribe();
+            supabase.channel('events_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => loadEvents()).subscribe();
+            supabase.channel('availability_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'availability' }, () => loadAvailability()).subscribe();
+        }
+
+        async function loadDepartments() {
+            const { data } = await supabase.from('departments').select('*');
+            if (data) {
+                departments = data;
                 localStorage.setItem('departments', JSON.stringify(departments));
+                generateMaintenanceSchedule();
+                render();
+            }
+        }
+
+        async function loadEvents() {
+            const { data } = await supabase.from('events').select('*');
+            if (data) {
+                events = data;
                 localStorage.setItem('events', JSON.stringify(events));
+                render();
+            }
+        }
+
+        async function loadAvailability() {
+            const { data } = await supabase.from('availability').select('*');
+            if (data) {
+                availability = {};
+                data.forEach(item => {
+                    availability[item.key] = item.available;
+                });
                 localStorage.setItem('availability', JSON.stringify(availability));
-                localStorage.setItem('adminPassword', adminPassword);
-            } catch (e) {
-                console.error('Erreur sauvegarde:', e);
+                render();
             }
         }
 
@@ -214,7 +265,6 @@
             }
             
             adminPassword = newPassword;
-            saveData();
             alert('Mot de passe changé avec succès!');
         }
 
@@ -595,32 +645,39 @@
             render();
         }
 
-        function toggleAvailability(deptId, starId, dateStr) {
+        async function toggleAvailability(deptId, starId, dateStr) {
             const key = `${deptId}_${starId}_${dateStr}`;
-            availability[key] = !availability[key];
-            saveData();
+            const newValue = !availability[key];
+            availability[key] = newValue;
+            localStorage.setItem('availability', JSON.stringify(availability));
+            
+            await supabase.from('availability').upsert({ key: key, available: newValue }, { onConflict: 'key' });
             render();
         }
 
-        function addDepartment() {
+        async function addDepartment() {
             const name = prompt('Nom du département:');
             if (!name) return;
-            departments.push({id: name.toLowerCase().replace(/\s+/g, '_'), name: name, stars: []});
-            generateMaintenanceSchedule();
-            saveData();
-            render();
+            
+            const newDept = { id: name.toLowerCase().replace(/\s+/g, '_'), name: name, stars: [] };
+            departments.push(newDept);
+            localStorage.setItem('departments', JSON.stringify(departments));
+            
+            await supabase.from('departments').insert(newDept);
+            loadDepartments();
         }
 
-        function deleteDepartment(deptId) {
+        async function deleteDepartment(deptId) {
             if (confirm('Êtes-vous sûr?')) {
                 departments = departments.filter(d => d.id !== deptId);
-                generateMaintenanceSchedule();
-                saveData();
-                render();
+                localStorage.setItem('departments', JSON.stringify(departments));
+                
+                await supabase.from('departments').delete().eq('id', deptId);
+                loadDepartments();
             }
         }
 
-        function addStarToDept(deptId) {
+        async function addStarToDept(deptId) {
             const name = prompt('Nom de la star:');
             if (!name) return;
             const email = prompt('Email:');
@@ -629,51 +686,50 @@
             
             const dept = departments.find(d => d.id === deptId);
             if (dept) {
-                dept.stars.push({
-                    id: Date.now(),
-                    name: name,
-                    email: email || '',
-                    phone: phone || '',
-                    birthDate: birthDate || ''
-                });
-                saveData();
-                render();
+                const newStar = { id: Date.now(), name: name, email: email || '', phone: phone || '', birthDate: birthDate || '' };
+                dept.stars.push(newStar);
+                localStorage.setItem('departments', JSON.stringify(departments));
+                
+                await supabase.from('departments').update({ stars: dept.stars }).eq('id', deptId);
+                loadDepartments();
             }
         }
 
-        function removeStarFromDept(deptId, starId) {
+        async function removeStarFromDept(deptId, starId) {
             if (confirm('Êtes-vous sûr?')) {
                 const dept = departments.find(d => d.id === deptId);
                 if (dept) {
                     dept.stars = dept.stars.filter(s => s.id !== starId);
-                    saveData();
-                    render();
+                    localStorage.setItem('departments', JSON.stringify(departments));
+                    
+                    await supabase.from('departments').update({ stars: dept.stars }).eq('id', deptId);
+                    loadDepartments();
                 }
             }
         }
 
-        function addEvent() {
+        async function addEvent() {
             const title = prompt('Titre:');
             if (!title) return;
             const date = prompt('Date (YYYY-MM-DD):');
             const startTime = prompt('Heure (HH:MM):');
             const location = prompt('Lieu:');
-            events.push({
-                id: Date.now(),
-                title: title,
-                date: date || '',
-                startTime: startTime || '',
-                location: location || ''
-            });
-            saveData();
-            render();
+            
+            const newEvent = { title: title, date: date || '', startTime: startTime || '', location: location || '' };
+            events.push(newEvent);
+            localStorage.setItem('events', JSON.stringify(events));
+            
+            await supabase.from('events').insert(newEvent);
+            loadEvents();
         }
 
-        function deleteEvent(id) {
+        async function deleteEvent(id) {
             if (confirm('Êtes-vous sûr?')) {
                 events = events.filter(e => e.id !== id);
-                saveData();
-                render();
+                localStorage.setItem('events', JSON.stringify(events));
+                
+                await supabase.from('events').delete().eq('id', id);
+                loadEvents();
             }
         }
 
@@ -689,8 +745,7 @@
             return result;
         }
 
-        loadData();
-        render();
+        initializeData();
     </script>
 </body>
 </html>
