@@ -715,7 +715,7 @@
             const startTime = prompt('Heure (HH:MM):');
             const location = prompt('Lieu:');
             
-            const newEvent = { title: title, date: date || '', startTime: startTime || '', location: location || '' };
+            const newEvent = { id: Date.now(), title: title, date: date || '', startTime: startTime || '', location: location || '' };
             events.push(newEvent);
             localStorage.setItem('events', JSON.stringify(events));
             
