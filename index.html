@@ -132,16 +132,14 @@
                 return;
             }
 
-            const messageBody = `
-Bonjour ${referentName},
+            const messageBody = `Bonjour ${referentName},
 
 C'est au tour de ${deptName} d'assurer l'entretien le:
 ${formatDate(new Date(date))}
 
 Merci pour votre engagement!
 
-ICC Lyon Sud
-            `.trim();
+ICC Lyon Sud`;
 
             fetch('https://api.web3forms.com/submit', {
                 method: 'POST',
@@ -149,7 +147,7 @@ ICC Lyon Sud
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    access_key: '3f42bd2b-ae7c-4c24-a5f4-81bbcc1d7ef8',
+                    access_key: '1418623a-3792-4cc6-bd07-2edad84f09a6',
                     to_email: referentEmail,
                     from_name: 'ICC Lyon Sud',
                     subject: `Alerte entretien - ${deptName}`,
