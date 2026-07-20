@@ -5,10 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Plateforme de gestion ICC</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body class="bg-gray-50">
     <div id="app"></div>
     <script>
+        // Initialiser EmailJS (gratuit)
+        emailjs.init("service_test");
+
         let currentUser = null;
         let activeTab = 'dashboard';
         let sidebarOpen = false;
@@ -23,21 +27,28 @@
         let availability = {};
         let maintenanceSchedule = {};
         let adminPassword = 'admin123';
+        let emailConfig = {
+            serviceId: '',
+            templateId: '',
+            emailRecipients: {}
+        };
 
         const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
-        // CHARGER LES DONNÉES
+        // CHARGER LES DONNÉES LOCALES
         function loadData() {
             try {
                 const savedDepts = localStorage.getItem('departments');
                 const savedEvents = localStorage.getItem('events');
                 const savedAvailability = localStorage.getItem('availability');
                 const savedPassword = localStorage.getItem('adminPassword');
+                const savedEmailConfig = localStorage.getItem('emailConfig');
                 
                 if (savedDepts) departments = JSON.parse(savedDepts);
                 if (savedEvents) events = JSON.parse(savedEvents);
                 if (savedAvailability) availability = JSON.parse(savedAvailability);
                 if (savedPassword) adminPassword = savedPassword;
+                if (savedEmailConfig) emailConfig = JSON.parse(savedEmailConfig);
                 
                 generateMaintenanceSchedule();
             } catch (e) {
@@ -45,13 +56,14 @@
             }
         }
 
-        // SAUVEGARDER LES DONNÉES
+        // SAUVEGARDER LES DONNÉES LOCALES
         function saveData() {
             try {
                 localStorage.setItem('departments', JSON.stringify(departments));
                 localStorage.setItem('events', JSON.stringify(events));
                 localStorage.setItem('availability', JSON.stringify(availability));
                 localStorage.setItem('adminPassword', adminPassword);
+                localStorage.setItem('emailConfig', JSON.stringify(emailConfig));
             } catch (e) {
                 console.error('Erreur sauvegarde:', e);
             }
@@ -146,6 +158,29 @@
 
         function formatDate(date) {
             return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+        }
+
+        function sendMaintenanceAlert(deptName, referentEmail, date) {
+            if (!emailConfig.serviceId || !emailConfig.templateId) {
+                alert('Configure d\'abord vos paramètres email!');
+                return;
+            }
+
+            const templateParams = {
+                to_email: referentEmail,
+                department_name: deptName,
+                maintenance_date: formatDate(new Date(date)),
+                from_name: 'ICC Lyon Sud'
+            };
+
+            emailjs.send(emailConfig.serviceId, emailConfig.templateId, templateParams)
+                .then(() => {
+                    alert(`Alerte envoyée à ${referentEmail}!`);
+                })
+                .catch((error) => {
+                    console.error('Erreur email:', error);
+                    alert('Erreur lors de l\'envoi de l\'email');
+                });
         }
 
         function render() {
@@ -258,126 +293,45 @@
                                 <p class="text-4xl font-bold mt-2">${events.length}</p>
                             </div>
                         </div>
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <h2 class="text-xl font-bold text-black mb-4">Prochains événements</h2>
-                            <div class="space-y-3">
-                                ${events.slice(0, 3).map(e => `
-                                    <div class="flex items-start gap-4 pb-3 border-b last:border-b-0">
-                                        <div class="w-12 h-12 bg-red-100 rounded flex items-center justify-center flex-shrink-0">
-                                            <span class="text-red-600 font-bold">${new Date(e.date).getDate()}</span>
-                                        </div>
-                                        <div class="flex-1">
-                                            <h3 class="font-medium text-black">${e.title}</h3>
-                                            <p class="text-sm text-gray-600">${new Date(e.date).toLocaleDateString('fr-FR')} ${e.startTime ? 'à ' + e.startTime : ''}</p>
-                                            ${e.location ? `<p class="text-sm text-gray-500">${e.location}</p>` : ''}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
                     </div>
                 `;
             }
 
-            else if (activeTab === 'recap') {
+            else if (activeTab === 'maintenance') {
                 content = `
                     <div class="space-y-8">
-                        <div class="flex justify-between items-center gap-4">
-                            <h1 class="text-4xl font-bold text-black">Services dimanche</h1>
-                            <div class="flex gap-4 bg-white rounded-lg p-2 shadow">
-                                <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100 rounded">←</button>
-                                <span class="text-sm font-medium text-gray-700 w-40 text-center">${monthNames[selectedMonth - 1]} ${selectedYear}</span>
-                                <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100 rounded">→</button>
-                            </div>
-                        </div>
+                        <h1 class="text-4xl font-bold text-black">Entretien</h1>
+                        <p class="text-gray-600">Chaque département assure l'entretien à tour de rôle, une semaine par mois.</p>
                         ${departments.length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Veuillez d\'abord ajouter des départements</p></div>' : `
-                        <div class="space-y-4">
-                            ${sundays.map(sunday => {
-                                const dateStr = sunday.toISOString().split('T')[0];
-                                const isExpanded = expandedSundays[dateStr];
-                                const services = getServicesForSunday(sunday);
-                                const totalServers = Object.values(services).reduce((acc, d) => acc + d.stars.length, 0);
-                                const deptsCovered = Object.values(services).filter(d => d.stars.length > 0).length;
+                        <div class="grid grid-cols-1 gap-6">
+                            ${Object.entries(maintenanceSchedule).map(([key, schedule]) => {
+                                const [year, month] = key.split('-');
+                                const monthIndex = parseInt(month) - 1;
                                 return `
-                                    <div class="bg-white rounded-lg shadow overflow-hidden">
-                                        <button onclick="toggleSundayExpand('${dateStr}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
-                                            <div class="text-left">
-                                                <h2 class="text-lg font-bold text-black">${formatDate(sunday)}</h2>
-                                                <p class="text-sm text-gray-600 mt-2">${totalServers} star(s) ★ • ${deptsCovered}/${departments.length} départements</p>
-                                            </div>
-                                            <span class="text-red-600">${isExpanded ? '▲' : '▼'}</span>
-                                        </button>
-                                        ${isExpanded ? `
-                                            <div class="border-t border-gray-200 p-6 bg-gray-50">
-                                                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                                    ${departments.map(dept => {
-                                                        const deptServices = services[dept.id];
-                                                        return `
-                                                            <div class="space-y-3">
-                                                                <h3 class="font-bold text-black text-sm">${dept.name}</h3>
-                                                                <div class="text-sm text-gray-600">${deptServices.stars.length} star(s)</div>
-                                                                <div class="space-y-1">
-                                                                    ${deptServices.stars.length === 0 ? '<p class="text-xs text-gray-400">Aucune star</p>' : deptServices.stars.map(s => `<p class="text-xs text-gray-700 bg-white p-2 rounded">${s.name}</p>`).join('')}
-                                                                </div>
-                                                            </div>
-                                                        `;
-                                                    }).join('')}
-                                                </div>
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                        `}
-                    </div>
-                `;
-            }
-
-            else if (activeTab === 'planning') {
-                content = `
-                    <div class="space-y-8">
-                        <div class="flex justify-between items-center gap-4">
-                            <h1 class="text-4xl font-bold text-black">Planning</h1>
-                            <div class="flex gap-4 bg-white rounded-lg p-2 shadow">
-                                <button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100 rounded">←</button>
-                                <span class="text-sm font-medium text-gray-700 w-40 text-center">${monthNames[selectedMonth - 1]}</span>
-                                <button onclick="setNextMonth()" class="p-2 hover:bg-gray-100 rounded">→</button>
-                            </div>
-                        </div>
-                        ${departments.length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Veuillez d\'abord ajouter des départements</p></div>' : `
-                        <div class="space-y-4">
-                            ${departments.map(dept => {
-                                const isExpanded = expandedDepts[dept.id];
-                                return `
-                                    <div class="bg-white rounded-lg shadow overflow-hidden">
-                                        <button onclick="toggleDeptExpand('${dept.id}')" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
-                                            <div class="flex-1">
-                                                <h2 class="text-lg font-bold text-black">${dept.name}</h2>
-                                                <p class="text-sm text-gray-600 mt-1">${dept.stars ? dept.stars.length : 0} star(s) ★</p>
-                                            </div>
-                                            <span class="text-red-600 text-xl ml-4 flex-shrink-0">${isExpanded ? '▲' : '▼'}</span>
-                                        </button>
-                                        ${isExpanded ? `
-                                            <div class="border-t border-gray-200 p-6 bg-gray-50 space-y-6">
-                                                ${!dept.stars || dept.stars.length === 0 ? '<p class="text-gray-600">Aucune star</p>' : dept.stars.map(star => `
-                                                    <div>
-                                                        <h3 class="font-bold text-black mb-3">${star.name}</h3>
-                                                        <div class="grid grid-cols-4 gap-2">
-                                                            ${sundays.map(sunday => {
-                                                                const dateStr = sunday.toISOString().split('T')[0];
-                                                                const avail = isAvailable(dept.id, star.id, dateStr);
-                                                                return `
-                                                                    <button onclick="toggleAvailability('${dept.id}', ${star.id}, '${dateStr}')" class="p-3 border rounded text-xs font-medium transition-colors h-12 flex items-center justify-center ${avail ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:border-red-600'}">
-                                                                        ${sunday.getDate()}
-                                                                    </button>
-                                                                `;
-                                                            }).join('')}
+                                    <div class="bg-white rounded-lg shadow p-6">
+                                        <h2 class="text-2xl font-bold text-black mb-6">${monthNames[monthIndex]} ${year}</h2>
+                                        <div class="space-y-4">
+                                            ${schedule.map((item, idx) => {
+                                                const dept = item.dept;
+                                                const referent = dept.stars.find(s => s.isReferent);
+                                                return `
+                                                    <div class="flex items-start gap-4 pb-4 border-b last:border-b-0">
+                                                        <div class="w-16 h-16 bg-red-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                                                            <span class="text-lg font-bold text-red-600">${item.sunday.getDate()}</span>
+                                                            <span class="text-xs text-red-600">Semaine ${item.week}</span>
+                                                        </div>
+                                                        <div class="flex-1">
+                                                            <p class="text-sm text-gray-600">${formatDate(item.sunday)}</p>
+                                                            <p class="text-xl font-bold text-black mt-1">${dept.name}</p>
+                                                            ${referent ? `
+                                                                <p class="text-sm text-gray-700 mt-2">Référent: ${referent.name} (${referent.email})</p>
+                                                                <button onclick="sendMaintenanceAlert('${dept.name}', '${referent.email}', '${item.sunday.toISOString().split('T')[0]}')" class="mt-3 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded hover:bg-red-700">Envoyer alerte</button>
+                                                            ` : '<p class="text-sm text-gray-500 mt-2">Aucun référent assigné</p>'}
                                                         </div>
                                                     </div>
-                                                `).join('')}
-                                            </div>
-                                        ` : ''}
+                                                `;
+                                            }).join('')}
+                                        </div>
                                     </div>
                                 `;
                             }).join('')}
@@ -422,7 +376,10 @@
                                                     ${dept.stars.map(star => `
                                                         <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 flex justify-between items-start gap-2">
                                                             <div class="flex-1 min-w-0">
-                                                                <p class="font-medium text-black text-sm">${star.name}</p>
+                                                                <div class="flex items-center gap-2">
+                                                                    <input type="checkbox" ${star.isReferent ? 'checked' : ''} onchange="toggleReferent('${dept.id}', ${star.id})" class="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500">
+                                                                    <p class="font-medium text-black text-sm">${star.name}</p>
+                                                                </div>
                                                                 <p class="text-xs text-gray-600 truncate">${star.email}</p>
                                                                 <p class="text-xs text-gray-600">${star.phone}</p>
                                                             </div>
@@ -441,81 +398,34 @@
                 `;
             }
 
-            else if (activeTab === 'birthdays') {
-                const birthdaysByMonth = getBirthdaysByMonth();
+            else if (activeTab === 'settings') {
                 content = `
                     <div class="space-y-8">
-                        <h1 class="text-4xl font-bold text-black">Anniversaires</h1>
-                        <p class="text-gray-600">Les anniversaires sont générés automatiquement à partir des dates de naissance des stars ★.</p>
-                        ${Object.keys(birthdaysByMonth).length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Aucun anniversaire enregistré</p></div>' : `
-                        <div class="space-y-4">
-                            ${Object.entries(birthdaysByMonth).map(([monthIndex, birthdays]) => {
-                                const isExpanded = expandedBirthdayMonths[monthIndex];
-                                return `
-                                    <div class="bg-white rounded-lg shadow overflow-hidden">
-                                        <button onclick="toggleBirthdayMonth(${monthIndex})" class="w-full p-6 hover:bg-gray-50 flex justify-between items-center transition-colors">
-                                            <div class="flex-1">
-                                                <h2 class="text-xl font-bold text-black">${monthNames[monthIndex]}</h2>
-                                                <p class="text-sm text-gray-600 mt-1">${birthdays.length} anniversaire(s)</p>
-                                            </div>
-                                            <span class="text-red-600 text-xl ml-4 flex-shrink-0">${isExpanded ? '▲' : '▼'}</span>
-                                        </button>
-                                        ${isExpanded ? `
-                                            <div class="border-t border-gray-200 p-6 bg-gray-50">
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    ${birthdays.map(b => {
-                                                        const date = new Date(b.date);
-                                                        return `
-                                                            <div class="bg-white rounded-lg p-4 border-l-4 border-red-600">
-                                                                <h3 class="text-lg font-bold text-black">${b.name}</h3>
-                                                                <p class="text-2xl font-bold text-red-600 mt-2">${date.getDate()} ${monthNames[date.getMonth()]}</p>
-                                                            </div>
-                                                        `;
-                                                    }).join('')}
-                                                </div>
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                `;
-                            }).join('')}
+                        <h1 class="text-4xl font-bold text-black">Paramètres email</h1>
+                        <p class="text-gray-600">Configurez vos identifiants EmailJS pour envoyer des alertes.</p>
+                        <div class="bg-white rounded-lg shadow p-8 max-w-2xl space-y-6">
+                            <div class="space-y-2">
+                                <label class="block text-sm font-medium text-black">Service ID EmailJS</label>
+                                <input id="serviceId" type="text" value="${emailConfig.serviceId}" placeholder="service_xxxxxxx" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:outline-none focus:ring-2 focus:ring-red-500" />
+                                <p class="text-xs text-gray-600">Trouvez-le sur <a href="https://dashboard.emailjs.com" target="_blank" class="text-red-600 underline">emailjs.com</a></p>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="block text-sm font-medium text-black">Template ID</label>
+                                <input id="templateId" type="text" value="${emailConfig.templateId}" placeholder="template_xxxxxxx" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:outline-none focus:ring-2 focus:ring-red-500" />
+                                <p class="text-xs text-gray-600">Template avec variables: to_email, department_name, maintenance_date, from_name</p>
+                            </div>
+                            <button onclick="saveEmailConfig()" class="w-full px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors">Sauvegarder</button>
                         </div>
-                        `}
-                    </div>
-                `;
-            }
-
-            else if (activeTab === 'maintenance') {
-                content = `
-                    <div class="space-y-8">
-                        <h1 class="text-4xl font-bold text-black">Entretien</h1>
-                        <p class="text-gray-600">Chaque département assure l'entretien à tour de rôle, une semaine par mois (août-décembre 2026).</p>
-                        ${departments.length === 0 ? '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center"><p class="text-yellow-800">Veuillez d\'abord ajouter des départements</p></div>' : `
-                        <div class="grid grid-cols-1 gap-6">
-                            ${Object.entries(maintenanceSchedule).map(([key, schedule]) => {
-                                const [year, month] = key.split('-');
-                                const monthIndex = parseInt(month) - 1;
-                                return `
-                                    <div class="bg-white rounded-lg shadow p-6">
-                                        <h2 class="text-2xl font-bold text-black mb-6">${monthNames[monthIndex]} ${year}</h2>
-                                        <div class="space-y-4">
-                                            ${schedule.map((item, idx) => `
-                                                <div class="flex items-start gap-4 pb-4 border-b last:border-b-0">
-                                                    <div class="w-16 h-16 bg-red-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
-                                                        <span class="text-lg font-bold text-red-600">${item.sunday.getDate()}</span>
-                                                        <span class="text-xs text-red-600">Semaine ${item.week}</span>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <p class="text-sm text-gray-600">${formatDate(item.sunday)}</p>
-                                                        <p class="text-xl font-bold text-black mt-1">${item.dept.name}</p>
-                                                    </div>
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                            <h3 class="font-bold text-blue-900 mb-2">Comment configurer EmailJS?</h3>
+                            <ol class="text-sm text-blue-800 space-y-2">
+                                <li>1. Allez sur <a href="https://www.emailjs.com" target="_blank" class="underline">emailjs.com</a></li>
+                                <li>2. Créez un compte gratuit</li>
+                                <li>3. Connectez un service email (Gmail, etc)</li>
+                                <li>4. Créez un template avec les variables mentionnées</li>
+                                <li>5. Copiez votre Service ID et Template ID ci-dessus</li>
+                            </ol>
                         </div>
-                        `}
                     </div>
                 `;
             }
@@ -557,12 +467,10 @@
                         </div>
                         <nav class="space-y-2">
                             <button onclick="switchTab('dashboard')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Tableau de bord</button>
-                            <button onclick="switchTab('recap')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'recap' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Récapitulatif</button>
-                            <button onclick="switchTab('planning')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'planning' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Planning</button>
                             <button onclick="switchTab('departments')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'departments' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Départements</button>
-                            <button onclick="switchTab('birthdays')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'birthdays' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Anniversaires</button>
                             <button onclick="switchTab('maintenance')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'maintenance' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Entretien</button>
                             <button onclick="switchTab('events')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'events' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Événements</button>
+                            <button onclick="switchTab('settings')" class="w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100'}">Paramètres</button>
                         </nav>
                         <button onclick="handleLogout()" class="mt-8 w-full px-4 py-3 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Déconnexion</button>
                     </div>
@@ -584,54 +492,15 @@
             render();
         }
 
-        function toggleDeptExpand(deptId) {
-            expandedDepts[deptId] = !expandedDepts[deptId];
-            render();
-        }
-
-        function toggleSundayExpand(dateStr) {
-            expandedSundays[dateStr] = !expandedSundays[dateStr];
-            render();
-        }
-
-        function toggleBirthdayMonth(monthIndex) {
-            expandedBirthdayMonths[monthIndex] = !expandedBirthdayMonths[monthIndex];
-            render();
-        }
-
-        function setPrevMonth() {
-            selectedMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
-            if (selectedMonth === 12) selectedYear--;
-            render();
-        }
-
-        function setNextMonth() {
-            selectedMonth = selectedMonth === 12 ? 1 : selectedMonth + 1;
-            if (selectedMonth === 1) selectedYear++;
-            render();
-        }
-
-        function toggleAvailability(deptId, starId, dateStr) {
-            const key = `${deptId}_${starId}_${dateStr}`;
-            availability[key] = !availability[key];
-            saveData();
-            render();
-        }
-
-        function isAvailable(deptId, starId, dateStr) {
-            return availability[`${deptId}_${starId}_${dateStr}`] || false;
-        }
-
-        function getServicesForSunday(sunday) {
-            const dateStr = sunday.toISOString().split('T')[0];
-            const result = {};
-            departments.forEach(dept => {
-                result[dept.id] = {
-                    name: dept.name,
-                    stars: (dept.stars || []).filter(star => isAvailable(dept.id, star.id, dateStr))
-                };
-            });
-            return result;
+        function toggleReferent(deptId, starId) {
+            const dept = departments.find(d => d.id === deptId);
+            if (dept) {
+                dept.stars.forEach(s => {
+                    s.isReferent = (s.id === starId) ? !s.isReferent : false;
+                });
+                saveData();
+                render();
+            }
         }
 
         function addDepartment() {
@@ -666,7 +535,8 @@
                     name: name,
                     email: email || '',
                     phone: phone || '',
-                    birthDate: birthDate || ''
+                    birthDate: birthDate || '',
+                    isReferent: false
                 });
                 saveData();
                 render();
@@ -707,6 +577,25 @@
                 saveData();
                 render();
             }
+        }
+
+        function getServicesForSunday(sunday) {
+            const dateStr = sunday.toISOString().split('T')[0];
+            const result = {};
+            departments.forEach(dept => {
+                result[dept.id] = {
+                    name: dept.name,
+                    stars: (dept.stars || []).filter(star => availability[`${dept.id}_${star.id}_${dateStr}`] || false)
+                };
+            });
+            return result;
+        }
+
+        function saveEmailConfig() {
+            emailConfig.serviceId = document.getElementById('serviceId').value;
+            emailConfig.templateId = document.getElementById('templateId').value;
+            saveData();
+            alert('Configuration sauvegardée!');
         }
 
         // Au démarrage
