@@ -1,13 +1,251 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>Test</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Plateforme de gestion ICC</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="p-8 bg-red-600 text-white text-center">
-        <h1>Test</h1>
-        <p>Si tu vois ça, c'est que ça marche</p>
-    </div>
+<body class="bg-gray-50">
+    <div id="app"></div>
+    <script>
+        let currentUser = null;
+        let activeTab = 'dashboard';
+        let sidebarOpen = false;
+        let expandedDepts = {};
+        let expandedSundays = {};
+        let expandedBirthdayMonths = {};
+        let selectedMonth = 7;
+        let selectedYear = 2026;
+
+        let departments = [];
+        let events = [];
+        let availability = {};
+        let maintenanceSchedule = {};
+        let adminPassword = 'admin123';
+
+        const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+        function generateMaintenanceSchedule() {
+            maintenanceSchedule = {};
+            if (departments.length === 0) return;
+
+            let deptIndex = 0;
+            const deptsList = departments.slice();
+
+            for (let year = 2026; year <= 2026; year++) {
+                for (let month = 8; month <= 12; month++) {
+                    const sundays = getSundays(month, year);
+                    const key = `${year}-${String(month).padStart(2, '0')}`;
+                    maintenanceSchedule[key] = [];
+
+                    sundays.forEach((sunday, index) => {
+                        maintenanceSchedule[key].push({
+                            sunday: sunday,
+                            week: index + 1,
+                            dept: deptsList[(deptIndex + index) % deptsList.length]
+                        });
+                    });
+
+                    deptIndex = (deptIndex + sundays.length) % deptsList.length;
+                }
+            }
+        }
+
+        function getAllStars() {
+            const allStars = {};
+            departments.forEach(dept => {
+                if (dept.stars) {
+                    dept.stars.forEach(star => {
+                        if (!allStars[star.id]) {
+                            allStars[star.id] = star;
+                        }
+                    });
+                }
+            });
+            return Object.values(allStars);
+        }
+
+        function getBirthdaysFromStars() {
+            const birthdays = [];
+            const stars = getAllStars();
+            stars.forEach(star => {
+                if (star.birthDate && !birthdays.some(b => b.id === star.id)) {
+                    birthdays.push({id: star.id, name: star.name, date: star.birthDate});
+                }
+            });
+            return birthdays.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateA.getMonth() - dateB.getMonth() || dateA.getDate() - dateB.getDate();
+            });
+        }
+
+        function getBirthdaysByMonth() {
+            const birthdays = getBirthdaysFromStars();
+            const grouped = {};
+            birthdays.forEach(b => {
+                const month = new Date(b.date).getMonth();
+                if (!grouped[month]) grouped[month] = [];
+                grouped[month].push(b);
+            });
+            return grouped;
+        }
+
+        function getSundays(month, year) {
+            const sundays = [];
+            const date = new Date(year, month - 1, 1);
+            while (date.getDay() !== 0) date.setDate(date.getDate() + 1);
+            while (date.getMonth() === month - 1) {
+                sundays.push(new Date(date));
+                date.setDate(date.getDate() + 7);
+            }
+            return sundays;
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+        }
+
+        function render() {
+            if (!currentUser) renderLogin();
+            else renderDashboard();
+        }
+
+        function renderLogin() {
+            document.getElementById('app').innerHTML = `<div class="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center p-4"><div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8 space-y-8"><div class="text-center space-y-2"><div class="w-12 h-12 bg-red-600 rounded-lg mx-auto flex items-center justify-center"><span class="text-white text-lg font-bold">P</span></div><h1 class="text-3xl font-bold tracking-tight text-black">Plateforme de gestion</h1><p class="text-sm font-light text-gray-600">ICC Lyon Sud</p></div><div class="space-y-4"><input id="email" type="email" placeholder="Email" value="admin@icc.com" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black placeholder-gray-400 text-sm" /><input id="password" type="password" placeholder="Mot de passe" value="admin123" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black placeholder-gray-400 text-sm" /></div><button onclick="handleLogin()" class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg">Connexion</button></div></div>`;
+        }
+
+        function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            if (email === 'admin@icc.com' && password === adminPassword) {
+                currentUser = {name: 'Admin', email: email};
+                activeTab = 'dashboard';
+                generateMaintenanceSchedule();
+                render();
+            } else {
+                alert('Identifiants incorrects!');
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            activeTab = 'dashboard';
+            render();
+        }
+
+        function changePassword() {
+            const oldPassword = prompt('Ancien mot de passe:');
+            if (!oldPassword) return;
+            if (oldPassword !== adminPassword) {
+                alert('Ancien mot de passe incorrect!');
+                return;
+            }
+            const newPassword = prompt('Nouveau mot de passe:');
+            if (!newPassword || newPassword.length < 3) {
+                alert('Le mot de passe doit faire au moins 3 caractères!');
+                return;
+            }
+            adminPassword = newPassword;
+            alert('Mot de passe changé!');
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            sidebarOpen = false;
+            render();
+        }
+
+        function renderDashboard() {
+            const sundays = getSundays(selectedMonth, selectedYear);
+            const allStars = getAllStars();
+            let content = '';
+
+            if (activeTab === 'dashboard') {
+                const nextSunday = sundays[0];
+                const totalServ = nextSunday ? 0 : 0;
+                content = `<div class="space-y-12"><h1 class="text-4xl font-bold text-black">Bienvenue</h1><div class="grid grid-cols-1 md:grid-cols-4 gap-6"><div class="bg-red-500 text-white p-6 rounded"><p>Stars ★</p><p class="text-4xl font-bold">${allStars.length}</p></div><div class="bg-red-400 text-white p-6 rounded"><p>Départements</p><p class="text-4xl font-bold">${departments.length}</p></div><div class="bg-red-300 text-white p-6 rounded"><p>Événements</p><p class="text-4xl font-bold">${events.length}</p></div></div></div>`;
+            }
+
+            else if (activeTab === 'recap') {
+                content = `<div class="space-y-8"><div class="flex justify-between items-center"><h1 class="text-4xl font-bold text-black">Services dimanche</h1><div class="flex gap-2"><button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100">←</button><span>${monthNames[selectedMonth - 1]}</span><button onclick="setNextMonth()" class="p-2 hover:bg-gray-100">→</button></div></div></div>`;
+            }
+
+            else if (activeTab === 'planning') {
+                content = `<div class="space-y-8"><div class="flex justify-between items-center"><h1 class="text-4xl font-bold text-black">Planning</h1><div class="flex gap-2"><button onclick="setPrevMonth()" class="p-2 hover:bg-gray-100">←</button><span>${monthNames[selectedMonth - 1]}</span><button onclick="setNextMonth()" class="p-2 hover:bg-gray-100">→</button></div></div></div>`;
+            }
+
+            else if (activeTab === 'departments') {
+                content = `<div class="space-y-8"><div class="flex justify-between"><h1 class="text-4xl font-bold text-black">Départements</h1><button onclick="addDepartment()" class="px-6 py-3 bg-red-600 text-white font-bold rounded">+ Ajouter</button></div><div class="grid grid-cols-1 md:grid-cols-3 gap-6">${departments.map(d => `<div class="bg-white p-6 rounded shadow"><h3 class="text-xl font-bold text-black">${d.name}</h3><p class="text-3xl font-bold text-red-600 mt-4">${d.stars ? d.stars.length : 0}</p><button onclick="addStarToDept('${d.id}')" class="w-full mt-4 py-2 border-2 border-red-300 text-red-600 rounded font-bold">+ Star</button><button onclick="deleteDepartment('${d.id}')" class="w-full mt-2 py-2 bg-red-600 text-white rounded font-bold">Supprimer</button></div>`).join('')}</div></div>`;
+            }
+
+            else if (activeTab === 'birthdays') {
+                const birthdaysByMonth = getBirthdaysByMonth();
+                content = `<div class="space-y-8"><h1 class="text-4xl font-bold text-black">Anniversaires</h1><p class="text-gray-600">Dates de naissance des stars</p></div>`;
+            }
+
+            else if (activeTab === 'maintenance') {
+                content = `<div class="space-y-8"><h1 class="text-4xl font-bold text-black">Entretien</h1><p class="text-gray-600">Planning d'entretien par département</p><div class="grid gap-6">${Object.entries(maintenanceSchedule).map(([key, schedule]) => {const [year, month] = key.split('-');const monthIndex = parseInt(month) - 1;return `<div class="bg-white rounded p-6"><h2 class="text-2xl font-bold text-black mb-4">${monthNames[monthIndex]} ${year}</h2><div class="space-y-4">${schedule.map(item => `<div class="flex gap-4"><div class="w-16 h-16 bg-red-100 rounded flex flex-col items-center justify-center"><span class="font-bold text-red-600">${item.sunday.getDate()}</span></div><div><p class="text-sm text-gray-600">${formatDate(item.sunday)}</p><p class="font-bold text-black">${item.dept.name}</p></div></div>`).join('')}</div></div>`;}).join('')}</div></div>`;
+            }
+
+            else if (activeTab === 'events') {
+                content = `<div class="space-y-8"><div class="flex justify-between"><h1 class="text-4xl font-bold text-black">Événements</h1><button onclick="addEvent()" class="px-6 py-3 bg-red-600 text-white font-bold rounded">+ Ajouter</button></div><div class="space-y-4">${events.map(e => `<div class="bg-white p-6 rounded shadow border-l-4 border-red-600"><h3 class="font-bold text-black">${e.title}</h3><p class="text-gray-600">${e.date}</p><button onclick="deleteEvent(${e.id})" class="mt-4 bg-red-600 text-white px-4 py-2 rounded font-bold">Supprimer</button></div>`).join('')}</div></div>`;
+            }
+
+            document.getElementById('app').innerHTML = `<div class="flex min-h-screen"><div class="w-64 bg-white border-r p-6"><h2 class="text-xl font-bold text-black">Plateforme</h2><p class="text-sm text-gray-600 mt-1">${currentUser.name}</p><button onclick="changePassword()" class="text-xs text-red-600 mt-2 underline">Changer mot de passe</button><nav class="space-y-2 mt-8"><button onclick="switchTab('dashboard')" class="w-full text-left p-3 rounded ${activeTab === 'dashboard' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'}">Tableau de bord</button><button onclick="switchTab('recap')" class="w-full text-left p-3 rounded ${activeTab === 'recap' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'}">Récapitulatif</button><button onclick="switchTab('planning')" class="w-full text-left p-3 rounded ${activeTab === 'planning' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'}">Planning</button><button onclick="switchTab('departments')" class="w-full text-left p-3 rounded ${activeTab === 'departments' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'}">Départements</button><button onclick="switchTab('birthdays')" class="w-full text-left p-3 rounded ${activeTab === 'birthdays' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'}">Anniversaires</button><button onclick="switchTab('maintenance')" class="w-full text-left p-3 rounded ${activeTab === 'maintenance' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'}">Entretien</button><button onclick="switchTab('events')" class="w-full text-left p-3 rounded ${activeTab === 'events' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'}">Événements</button></nav><button onclick="handleLogout()" class="mt-8 w-full p-3 border rounded hover:bg-gray-50">Déconnexion</button></div><div class="flex-1 p-12">${content}</div></div>`;
+        }
+
+        function toggleDeptExpand(deptId) { expandedDepts[deptId] = !expandedDepts[deptId]; render(); }
+        function toggleSundayExpand(dateStr) { expandedSundays[dateStr] = !expandedSundays[dateStr]; render(); }
+        function toggleBirthdayMonth(monthIndex) { expandedBirthdayMonths[monthIndex] = !expandedBirthdayMonths[monthIndex]; render(); }
+        function setPrevMonth() { selectedMonth = selectedMonth === 1 ? 12 : selectedMonth - 1; if (selectedMonth === 12) selectedYear--; render(); }
+        function setNextMonth() { selectedMonth = selectedMonth === 12 ? 1 : selectedMonth + 1; if (selectedMonth === 1) selectedYear++; render(); }
+
+        function addDepartment() {
+            const name = prompt('Nom:');
+            if (name) {
+                departments.push({ id: Date.now(), name: name, stars: [] });
+                generateMaintenanceSchedule();
+                render();
+            }
+        }
+
+        function deleteDepartment(deptId) {
+            if (confirm('Supprimer?')) {
+                departments = departments.filter(d => d.id !== deptId);
+                generateMaintenanceSchedule();
+                render();
+            }
+        }
+
+        function addStarToDept(deptId) {
+            const name = prompt('Nom:');
+            if (name) {
+                const dept = departments.find(d => d.id === deptId);
+                if (dept) {
+                    dept.stars.push({ id: Date.now(), name: name });
+                    render();
+                }
+            }
+        }
+
+        function addEvent() {
+            const title = prompt('Titre:');
+            if (title) {
+                events.push({ id: Date.now(), title: title, date: new Date().toLocaleDateString() });
+                render();
+            }
+        }
+
+        function deleteEvent(id) {
+            if (confirm('Supprimer?')) {
+                events = events.filter(e => e.id !== id);
+                render();
+            }
+        }
+
+        render();
+    </script>
 </body>
 </html>
