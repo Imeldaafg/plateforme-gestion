@@ -5,80 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Plateforme ICC</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-50">
-    <div id="app" class="min-h-screen"></div>
+    <div id="app"></div>
     <script>
-        const supabase = window.supabase.createClient('https://kmoqkcpndqegsiioezgj.supabase.co', 'sb_publishable_-fZwKreNBuJjf03tkJfjRg_IsepO0gp');
-        
         let user = null;
         let tab = 'dashboard';
-        let depts = [];
-        let events = [];
-        let avail = {};
-        let pwd = 'admin123';
-        const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-
-        async function init() {
-            try {
-                const [d, e, a] = await Promise.all([
-                    supabase.from('departments').select('*'),
-                    supabase.from('events').select('*'),
-                    supabase.from('availability').select('*')
-                ]);
-                if (d.data) depts = d.data;
-                if (e.data) events = e.data;
-                if (a.data) {
-                    avail = {};
-                    a.data.forEach(x => avail[x.key] = x.available);
-                }
-            } catch (e) {
-                const saved = localStorage.getItem('depts');
-                if (saved) depts = JSON.parse(saved);
-            }
-            render();
-        }
+        let depts = JSON.parse(localStorage.getItem('depts') || '[]');
+        let events = JSON.parse(localStorage.getItem('events') || '[]');
 
         function render() {
             if (!user) {
-                renderLogin();
-            } else {
-                renderApp();
-            }
-        }
-
-        function renderLogin() {
-            document.getElementById('app').innerHTML = `
-                <div class="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center p-4">
-                    <div class="bg-white p-8 rounded-lg shadow-lg w-96">
-                        <h1 class="text-3xl font-bold text-center mb-8 text-black">Plateforme ICC</h1>
-                        <input id="e" type="email" placeholder="admin@icc.com" value="admin@icc.com" class="w-full p-3 border rounded mb-4 text-black" />
-                        <input id="p" type="password" placeholder="Mot de passe" value="admin123" class="w-full p-3 border rounded mb-4 text-black" />
-                        <button onclick="login()" class="w-full bg-red-600 text-white p-3 rounded font-bold">Connexion</button>
+                document.getElementById('app').innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
+                        <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+                            <h1 class="text-3xl font-bold text-center mb-8 text-black">Plateforme ICC</h1>
+                            <input id="e" type="email" value="admin@icc.com" class="w-full p-3 border rounded mb-4 text-black" />
+                            <input id="p" type="password" value="admin123" class="w-full p-3 border rounded mb-4 text-black" />
+                            <button onclick="login()" class="w-full bg-red-600 text-white p-3 rounded font-bold">Connexion</button>
+                        </div>
                     </div>
-                </div>
-            `;
-        }
+                `;
+                return;
+            }
 
-        function renderApp() {
             let content = '';
-
             if (tab === 'dashboard') {
+                const totalStars = depts.reduce((acc, d) => acc + (d.stars ? d.stars.length : 0), 0);
                 content = `
                     <h1 class="text-4xl font-bold mb-8 text-black">Tableau de bord</h1>
                     <div class="grid grid-cols-4 gap-4">
-                        <div class="bg-red-600 text-white p-6 rounded"><p class="text-gray-100">Depts</p><p class="text-4xl font-bold">${depts.length}</p></div>
-                        <div class="bg-red-500 text-white p-6 rounded"><p class="text-gray-100">Stars</p><p class="text-4xl font-bold">${getTotalStars()}</p></div>
-                        <div class="bg-red-400 text-white p-6 rounded"><p class="text-gray-100">Events</p><p class="text-4xl font-bold">${events.length}</p></div>
-                        <div class="bg-red-700 text-white p-6 rounded"><p class="text-gray-100">Disponibilités</p><p class="text-4xl font-bold">${Object.keys(avail).length}</p></div>
+                        <div class="bg-red-600 text-white p-6 rounded"><p>Depts</p><p class="text-4xl font-bold">${depts.length}</p></div>
+                        <div class="bg-red-500 text-white p-6 rounded"><p>Stars</p><p class="text-4xl font-bold">${totalStars}</p></div>
+                        <div class="bg-red-400 text-white p-6 rounded"><p>Events</p><p class="text-4xl font-bold">${events.length}</p></div>
                     </div>
                 `;
             }
             else if (tab === 'departments') {
                 content = `
                     <h1 class="text-4xl font-bold mb-8 text-black">Départements</h1>
-                    <button onclick="addDept()" class="bg-red-600 text-white px-6 py-3 rounded mb-6 font-bold">+ Ajouter Département</button>
+                    <button onclick="addDept()" class="bg-red-600 text-white px-6 py-3 rounded mb-6 font-bold">+ Ajouter</button>
                     <div class="grid grid-cols-3 gap-6">
                         ${depts.map(d => `
                             <div class="bg-white p-6 rounded shadow">
@@ -94,7 +60,7 @@
             else if (tab === 'events') {
                 content = `
                     <h1 class="text-4xl font-bold mb-8 text-black">Événements</h1>
-                    <button onclick="addEvent()" class="bg-red-600 text-white px-6 py-3 rounded mb-6 font-bold">+ Ajouter Événement</button>
+                    <button onclick="addEvent()" class="bg-red-600 text-white px-6 py-3 rounded mb-6 font-bold">+ Ajouter</button>
                     <div class="space-y-4">
                         ${events.map(e => `
                             <div class="bg-white p-6 rounded shadow border-l-4 border-red-600">
@@ -112,9 +78,9 @@
                     <div class="w-64 bg-white border-r p-6">
                         <h2 class="text-xl font-bold mb-8 text-black">Plateforme</h2>
                         <nav class="space-y-2">
-                            <button onclick="switchTab('dashboard')" class="w-full text-left p-3 rounded ${tab === 'dashboard' ? 'bg-red-600 text-white' : 'hover:bg-gray-100 text-gray-700'}">Tableau de bord</button>
-                            <button onclick="switchTab('departments')" class="w-full text-left p-3 rounded ${tab === 'departments' ? 'bg-red-600 text-white' : 'hover:bg-gray-100 text-gray-700'}">Départements</button>
-                            <button onclick="switchTab('events')" class="w-full text-left p-3 rounded ${tab === 'events' ? 'bg-red-600 text-white' : 'hover:bg-gray-100 text-gray-700'}">Événements</button>
+                            <button onclick="changeTab('dashboard')" class="w-full text-left p-3 rounded ${tab === 'dashboard' ? 'bg-red-600 text-white' : 'hover:bg-gray-100 text-gray-700'}">Tableau</button>
+                            <button onclick="changeTab('departments')" class="w-full text-left p-3 rounded ${tab === 'departments' ? 'bg-red-600 text-white' : 'hover:bg-gray-100 text-gray-700'}">Départements</button>
+                            <button onclick="changeTab('events')" class="w-full text-left p-3 rounded ${tab === 'events' ? 'bg-red-600 text-white' : 'hover:bg-gray-100 text-gray-700'}">Événements</button>
                         </nav>
                         <button onclick="logout()" class="mt-8 w-full p-3 border rounded hover:bg-gray-50 text-gray-700 font-bold">Déconnexion</button>
                     </div>
@@ -126,10 +92,8 @@
         }
 
         function login() {
-            const e = document.getElementById('e').value;
-            const p = document.getElementById('p').value;
-            if (e === 'admin@icc.com' && p === pwd) {
-                user = { email: e };
+            if (document.getElementById('e').value === 'admin@icc.com' && document.getElementById('p').value === 'admin123') {
+                user = true;
                 render();
             } else {
                 alert('Identifiants incorrects!');
@@ -138,80 +102,61 @@
 
         function logout() {
             user = null;
-            tab = 'dashboard';
             render();
         }
 
-        function switchTab(t) {
+        function changeTab(t) {
             tab = t;
             render();
         }
 
-        async function addDept() {
+        function addDept() {
             const name = prompt('Nom du département:');
-            if (!name) return;
-            const newDept = { id: name.toLowerCase().replace(/\s+/g, '_'), name: name, stars: [] };
-            depts.push(newDept);
-            localStorage.setItem('depts', JSON.stringify(depts));
-            try {
-                await supabase.from('departments').insert(newDept);
-            } catch (e) {}
-            render();
+            if (name) {
+                depts.push({ id: Date.now(), name: name, stars: [] });
+                localStorage.setItem('depts', JSON.stringify(depts));
+                render();
+            }
         }
 
-        async function delDept(id) {
-            if (confirm('Êtes-vous sûr?')) {
+        function delDept(id) {
+            if (confirm('Supprimer?')) {
                 depts = depts.filter(d => d.id !== id);
                 localStorage.setItem('depts', JSON.stringify(depts));
-                try {
-                    await supabase.from('departments').delete().eq('id', id);
-                } catch (e) {}
                 render();
             }
         }
 
-        async function addStar(deptId) {
-            const name = prompt('Nom:');
-            if (!name) return;
-            const dept = depts.find(d => d.id === deptId);
-            if (dept) {
-                if (!dept.stars) dept.stars = [];
-                dept.stars.push({ id: Date.now(), name: name });
-                localStorage.setItem('depts', JSON.stringify(depts));
-                try {
-                    await supabase.from('departments').update({ stars: dept.stars }).eq('id', deptId);
-                } catch (e) {}
-                render();
+        function addStar(deptId) {
+            const name = prompt('Nom de la star:');
+            if (name) {
+                const dept = depts.find(d => d.id === deptId);
+                if (dept) {
+                    dept.stars.push({ id: Date.now(), name: name });
+                    localStorage.setItem('depts', JSON.stringify(depts));
+                    render();
+                }
             }
         }
 
-        async function addEvent() {
+        function addEvent() {
             const title = prompt('Titre:');
-            if (!title) return;
-            const date = prompt('Date:');
-            const newEvent = { id: Date.now(), title: title, date: date || '' };
-            events.push(newEvent);
-            try {
-                await supabase.from('events').insert(newEvent);
-            } catch (e) {}
-            render();
-        }
-
-        async function delEvent(id) {
-            if (confirm('Êtes-vous sûr?')) {
-                events = events.filter(e => e.id !== id);
-                try {
-                    await supabase.from('events').delete().eq('id', id);
-                } catch (e) {}
+            if (title) {
+                events.push({ id: Date.now(), title: title, date: new Date().toLocaleDateString() });
+                localStorage.setItem('events', JSON.stringify(events));
                 render();
             }
         }
 
-        function getTotalStars() {
-            return depts.reduce((acc, d) => acc + (d.stars ? d.stars.length : 0), 0);
+        function delEvent(id) {
+            if (confirm('Supprimer?')) {
+                events = events.filter(e => e.id !== id);
+                localStorage.setItem('events', JSON.stringify(events));
+                render();
+            }
         }
 
-        init();
+        render();
     </script>
 </body>
 </html>
